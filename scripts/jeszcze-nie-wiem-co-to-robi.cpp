@@ -62,27 +62,35 @@ int main() {
     }
 
     EM_ASM({
-            const div = document.getElementById('drawing-box');
-            const canvas = document.createElement('canvas');
-            canvas.width = $0;
-            canvas.height = $1;
-            div.appendChild(canvas);
-            const ctx = canvas.getContext('2d');
-            const imageData = ctx.createImageData($0, $1);
-            const data = imageData.data;
-            const pixels = Module.HEAPU8.subarray($2, $2 + $0 * $1 * 3);
-            for (let i = 0; i < $0 * $1; i++) {
-                data[i * 4] = pixels[i * 3];
-                data[i * 4 + 1] = pixels[i * 3 + 1];
-                data[i * 4 + 2] = pixels[i * 3 + 2];
-                data[i * 4 + 3] = 255;
-            }
-            ctx.putImageData(imageData, 0, 0);
-        }, width, height, pixels);
+        const div = document.getElementById('drawing-box');
+        const canvas = document.createElement('canvas');
+        canvas.width = $0;
+        canvas.height = $1;
+        div.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.createImageData($0, $1);
+        const data = imageData.data;
+        const pixels = Module.HEAPU8.subarray($2, $2 + $0 * $1 * 3);
+        for (let i = 0; i < $0 * $1; i++) {
+            data[i * 4] = pixels[i * 3];
+            data[i * 4 + 1] = pixels[i * 3 + 1];
+            data[i * 4 + 2] = pixels[i * 3 + 2];
+            data[i * 4 + 3] = 255;
+        }
+        ctx.putImageData(imageData, 0, 0);
+    }, width, height, pixels);
 
-    while (active) {
-        
-    }
+    while (active) { // Okej chyba rozumiem - emscripten prawie napewno dodaje jsowe
+                     // funckje do jakiejś dziwnej kolejki dlatego nic się nie rysuje
+    }                // bo te instrukcje CHYBA nie są wysyłane az coś się stanie
+                     // za Chiny Ludowe nie wiem co musi się stać, bo NIC nie dzieje się az
+                     // pętla się skończy
+
+                     // Stąd wniosek ze emscripten nie wykonuje JSa w trakcie wykonywania
+                     // kodu cpp, tylko po jego zakończeniu
+
+                     // Sprobuje przeanalizować to jak to wygląda po skompilowaniu, ale nie obiecuje ze
+                     // cos znajde
 
     return 0;
 }
