@@ -1,0 +1,5 @@
+## NOT pip requirements
+
+emdsk => 4.0.4
+
+## MAYBE pip requirements

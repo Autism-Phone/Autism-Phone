@@ -1,0 +1,11 @@
+#drawing-box {
+    width: 70%;
+    height: 65vh;
+    border-color: black;
+    border-width: 1px;
+    border-style: solid;
+    margin: auto; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center;
+}
