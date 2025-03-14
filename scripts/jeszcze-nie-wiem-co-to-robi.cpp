@@ -11,8 +11,6 @@ struct Pixel {
 
 Pixel* pixels;
 
-bool active = true;
-
 EM_JS(void, setup, (), {
     const div = document.getElementById('drawing-box');
     div.addEventListener('mousemove', (event) => {
@@ -28,6 +26,10 @@ extern "C" {
     void on_mouse_move(int x, int y) {
         std::cout << "mouse_pos = (" << x << ", " << y << ")" << std::endl;
     }
+}
+
+void main_loop() {
+    
 }
 
 int main() {
@@ -80,17 +82,7 @@ int main() {
         ctx.putImageData(imageData, 0, 0);
     }, width, height, pixels);
 
-    while (active) { // Okej chyba rozumiem - emscripten prawie napewno dodaje jsowe
-                     // funckje do jakiejś dziwnej kolejki dlatego nic się nie rysuje
-    }                // bo te instrukcje CHYBA nie są wysyłane az coś się stanie
-                     // za Chiny Ludowe nie wiem co musi się stać, bo NIC nie dzieje się az
-                     // pętla się skończy
-
-                     // Stąd wniosek ze emscripten nie wykonuje JSa w trakcie wykonywania
-                     // kodu cpp, tylko po jego zakończeniu
-
-                     // Sprobuje przeanalizować to jak to wygląda po skompilowaniu, ale nie obiecuje ze
-                     // cos znajde
+    emscripten_set_main_loop(main_loop, 0, 1);
 
     return 0;
 }
