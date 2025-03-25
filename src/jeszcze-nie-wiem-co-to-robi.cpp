@@ -2,7 +2,6 @@
 #include <emscripten/stack.h>
 #include <iostream>
 #include <malloc.h>
-#include <alloca.h>
 #include <emscripten/html5.h>
 
 struct Pixel {
