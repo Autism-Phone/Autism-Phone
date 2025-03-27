@@ -18,6 +18,9 @@ def compile(file):
         "-s", "EXPORTED_FUNCTIONS=_main",
         "-s", "STACK_SIZE=1000000",
         "-s", "USE_SDL=2",
+        "-s", "INITIAL_MEMORY=64MB",
+        "-s", "ALLOW_MEMORY_GROWTH=1",
+        "-s", "USE_WEBGL2=1",
     ]
 
     try:
