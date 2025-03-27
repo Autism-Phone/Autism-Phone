@@ -11,7 +11,21 @@
     <p>Start drawing your masterpiece!</p>
 
     <div id="drawing-box">
+        <canvas id="canvas"></canvas>
     </div>
+
+    <script>
+        if (!window.WebGLRenderingContext) {
+            alert("WebGL not supported!");
+        }
+    </script>
+
+    <script type='text/javascript'>
+        var Module = {
+            canvas: (function() { return document.getElementById('canvas'); })()
+        };
+    </script>
+
     <script src="scripts/compiled/jeszcze-nie-wiem-co-to-robi.js"></script>
 </body>
 </html>

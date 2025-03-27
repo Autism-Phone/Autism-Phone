@@ -2,7 +2,9 @@ import subprocess
 import os
 import shutil
 
-print(shutil.which("emcc") + '\n')
+if not shutil.which("emcc"):
+    print("Emscripten not found. Please install it and add it to your PATH.")
+    exit(1)
 
 def compile(file):
     output_file = os.path.join(output_folder, os.path.basename(file).replace(".cpp", ".js"))
@@ -16,10 +18,13 @@ def compile(file):
         "-s", "EXPORTED_FUNCTIONS=_main",
         "-s", "STACK_SIZE=1000000",
         "-s", "USE_SDL=2",
+        "-s", "INITIAL_MEMORY=64MB",
+        "-s", "ALLOW_MEMORY_GROWTH=1",
+        "-s", "USE_WEBGL2=1",
     ]
 
     try:
-        subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True, shell=True)
+        subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True)
         print(f"Compilation of {file} was successful.")
     except subprocess.CalledProcessError as e:
         print(f"Error compiling {file}:\n{e.stderr}")
