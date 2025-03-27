@@ -12,9 +12,10 @@ def compile(file):
         file, 
         "-o", output_file, 
         "-O3",
-        "-s", "EXTRA_EXPORTED_RUNTIME_METHODS=ccall,cwrap",
+        "-s", "EXPORTED_RUNTIME_METHODS=ccall,cwrap",
         "-s", "EXPORTED_FUNCTIONS=_main",
         "-s", "STACK_SIZE=1000000",
+        "-s", "USE_SDL=2",
     ]
 
     try:
