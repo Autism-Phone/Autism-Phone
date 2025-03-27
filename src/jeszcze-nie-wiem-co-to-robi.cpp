@@ -2,44 +2,116 @@
 #include <emscripten/stack.h>
 #include <iostream>
 #include <malloc.h>
+
+#include <alloca.h> // Tę linijkę nalezy zakomentować na Windowsie
+
 #include <emscripten/html5.h>
+#include <SDL/SDL.h>
+#include <SDL/SDL_hints.h>
 
 struct Pixel {
     uint8_t r, g, b;
 };
 
+struct Position {
+    int x, y;
+};
+
 Pixel* pixels;
 
-EM_JS(void, setup, (), {
-    const div = document.getElementById('drawing-box');
-    div.addEventListener('mousemove', (event) => {
-        const rect = div.getBoundingClientRect();
-        const relativeX = event.clientX - rect.left;
-        const relativeY = event.clientY - rect.top;
-        Module._on_mouse_move(relativeX, relativeY);
-    });
-});
+SDL_Window* window = nullptr;
+SDL_Renderer* renderer = nullptr;
+SDL_Event* event = nullptr;
 
-extern "C" {
-    EMSCRIPTEN_KEEPALIVE
-    void on_mouse_move(int x, int y) {
-        std::cout << "mouse_pos = (" << x << ", " << y << ")" << std::endl;
+double last_time = SDL_GetTicks();
+const double update_interval = 10.0;
+double last_update = 0.0;
+
+Position mouse_pos = {0, 0};
+
+Position get_div_corner() {
+    Position pos;
+    EM_ASM({
+        const div = document.getElementById('drawing-box');
+        const rect = div.getBoundingClientRect();
+        Module.HEAP32[$0 >> 2] = rect.left;
+        Module.HEAP32[$1 >> 2] = rect.top;
+    }, &pos.x, &pos.y);
+    return pos;
+}
+
+std::pair<int, int> get_div_size() {
+    int width, height;
+    EM_ASM({
+        const div = document.getElementById('drawing-box');
+        Module.HEAP32[$0 >> 2] = div.clientWidth;
+        Module.HEAP32[$1 >> 2] = div.clientHeight;
+    }, &width, &height);
+    return {width, height};
+}
+
+void init() {
+	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+		throw("SDL failed to initialise");
+	}
+
+    auto [width, height] = get_div_size();
+
+	window = SDL_CreateWindow("SDL2 Example!!", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+
+	if (window == nullptr) {
+		SDL_Quit();
+		throw("Failed to create window");
+	}
+
+	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	
+	if (renderer == nullptr)
+	{
+		window = NULL;
+		SDL_Quit();
+		throw("Failed to create renderer");
+	}
+
+	event = new SDL_Event();
+}
+
+void update_mouse_pos() {
+    SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
+}
+
+void render() {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+
+    SDL_RenderPresent(renderer);
+}
+
+void input() {
+    if (event->type == SDL_QUIT) {
+        emscripten_cancel_main_loop();
     }
 }
 
 void main_loop() {
-    
+    double current_time = SDL_GetTicks();
+    double delta_time = current_time - last_time;
+    last_time = current_time;
+
+    render();
+
+    while (SDL_PollEvent(event)) {
+        input();
+    }
+
+    update_mouse_pos();
+    std::cout << "(" << mouse_pos.x << ", " << mouse_pos.y << ")" << std::endl;
 }
 
 int main() {
-    setup();
-    int width, height;
-    EM_ASM({
-        const div = document.getElementById('drawing-box');
-        const rect = div.getBoundingClientRect();
-        Module.HEAP32[$0 >> 2] = rect.width;
-        Module.HEAP32[$1 >> 2] = rect.height;
-    }, &width, &height);
+    init();
+
+    auto [width, height] = get_div_size();
 
     std::cout << "width = " << width << ", height = " << height << std::endl;
 
@@ -61,25 +133,6 @@ int main() {
         pixels[i].g = 0;
         pixels[i].b = 0;
     }
-
-    EM_ASM({
-        const div = document.getElementById('drawing-box');
-        const canvas = document.createElement('canvas');
-        canvas.width = $0;
-        canvas.height = $1;
-        div.appendChild(canvas);
-        const ctx = canvas.getContext('2d');
-        const imageData = ctx.createImageData($0, $1);
-        const data = imageData.data;
-        const pixels = Module.HEAPU8.subarray($2, $2 + $0 * $1 * 3);
-        for (let i = 0; i < $0 * $1; i++) {
-            data[i * 4] = pixels[i * 3];
-            data[i * 4 + 1] = pixels[i * 3 + 1];
-            data[i * 4 + 2] = pixels[i * 3 + 2];
-            data[i * 4 + 3] = 255;
-        }
-        ctx.putImageData(imageData, 0, 0);
-    }, width, height, pixels);
 
     emscripten_set_main_loop(main_loop, 0, 1);
 
