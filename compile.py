@@ -1,6 +1,7 @@
 import subprocess
 import os
 import shutil
+import platform
 
 if not shutil.which("emcc"):
     print("Emscripten not found. Please install it and add it to your PATH.")
@@ -23,11 +24,33 @@ def compile(file):
         "-s", "USE_WEBGL2=1",
     ]
 
+    if platform.system() == "Windows":
+        try:
+            subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True, shell=True)
+            print(f"Compilation of {file} was successful.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error compiling {file}:\n{e.stderr}")
+    else:
+        try:
+            subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True)
+            print(f"Compilation of {file} was successful.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error compiling {file}:\n{e.stderr}")
+
+
+
+if platform.system() == "Windows":
     try:
-        subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True)
-        print(f"Compilation of {file} was successful.")
+        subprocess.run(["embuilder", "build", "sdl2"], check=True, stderr=subprocess.PIPE, text=True, shell=True)
+        print(f"SDL2 built.")
     except subprocess.CalledProcessError as e:
-        print(f"Error compiling {file}:\n{e.stderr}")
+        print(f"Error building SDL2:\n{e.stderr}")
+else:
+    try:
+        subprocess.run(["embuilder", "build", "sdl2"], check=True, stderr=subprocess.PIPE, text=True)
+        print(f"SDL2 built.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error building SDL2:\n{e.stderr}")
 
 
 input_folder = os.path.join(os.getcwd(), "src")

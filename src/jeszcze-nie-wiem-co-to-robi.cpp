@@ -3,7 +3,7 @@
 #include <iostream>
 #include <malloc.h>
 
-#include <alloca.h> // Tę linijkę nalezy zakomentować na Windowsie
+#include <alloca.h>
 
 #include <emscripten/html5.h>
 #include <SDL2/SDL.h>
@@ -124,13 +124,26 @@ void draw() {
         return;
     }
 
-    for (int i = 0; i < brush_size; i++) {
+    /*for (int i = 0; i < brush_size; i++) {
         for (int j = 0; j < brush_size; j++) {
             int x = mouse_pos.x + i - brush_size / 2;
             int y = mouse_pos.y + j - brush_size / 2;
 
             if (x >= 0 && x < width && y >= 0 && y < height) {
                 pixels[y * width + x] = {brush_color.r, brush_color.g, brush_color.b};
+            }
+        }
+    }*/
+
+    for (int i = -brush_size / 2; i <= brush_size / 2; i++) {
+        for (int j = -brush_size / 2; j <= brush_size / 2; j++) {
+            int x = mouse_pos.x + i;
+            int y = mouse_pos.y + j;
+
+            if (x >= 0 && x < width && y >= 0 && y < height) {
+                if (i * i + j * j <= (brush_size / 2) * (brush_size / 2)) {
+                    pixels[y * width + x] = {brush_color.r, brush_color.g, brush_color.b};
+                }
             }
         }
     }
