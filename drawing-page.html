@@ -10,9 +10,25 @@
     <h1>Welcome to the Drawing Page</h1>
     <p>Start drawing your masterpiece!</p>
 
-    <div id="drawing-box">
-        <canvas id="canvas"></canvas>
-    </div>
+    <span>
+        <div id="drawing-box">
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div id="toolbox">
+            <button id="clear-button">Clear</button>
+            <input type="color" id="color-picker" value="#000000">
+            <button id="size-button">Size</button>
+            <input type="number" id="size-picker" value="5" min="1" max="100">
+            <button id="shape-button">Shape</button>
+            <select id="shape-picker">
+                <option value="square">Square</option>
+                <option value="circle">Circle</option>
+            </select>
+            <button id="eraser-button">Eraser</button>
+        </div>
+    </span>
+    
 
     <script>
         if (!window.WebGLRenderingContext) {
@@ -26,6 +42,6 @@
         };
     </script>
 
-    <script src="scripts/compiled/jeszcze-nie-wiem-co-to-robi.js"></script>
+    <script src="scripts/compiled/main.js"></script>
 </body>
 </html>

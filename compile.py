@@ -17,7 +17,7 @@ def compile(file):
         "-O3",
         "-s", "EXPORTED_RUNTIME_METHODS=ccall,cwrap",
         "-s", "EXPORTED_FUNCTIONS=_main",
-        "-s", "STACK_SIZE=1000000",
+        "-s", "STACK_SIZE=2000000",                                                         # This is a warcrime. I should be executed for this.
         "-s", "USE_SDL=2",
         "-s", "INITIAL_MEMORY=64MB",
         "-s", "ALLOW_MEMORY_GROWTH=1",
@@ -26,28 +26,29 @@ def compile(file):
 
     if platform.system() == "Windows":
         try:
-            subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True, shell=True)
+            subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True, shell=True)   # For some reason Windows requires shell=True
             print(f"Compilation of {file} was successful.")
         except subprocess.CalledProcessError as e:
             print(f"Error compiling {file}:\n{e.stderr}")
     else:
         try:
-            subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True)
-            print(f"Compilation of {file} was successful.")
+            subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True)              # Shell=True crashes on macOS, so probably on Linux too
+            print(f"Compilation of {file} was successful.")                                 # but I'm too lazy to check
         except subprocess.CalledProcessError as e:
             print(f"Error compiling {file}:\n{e.stderr}")
 
 
-
 if platform.system() == "Windows":
     try:
-        subprocess.run(["embuilder", "build", "sdl2"], check=True, stderr=subprocess.PIPE, text=True, shell=True)
+        subprocess.run(["embuilder", "build", "sdl2"], 
+                       check=True, stderr=subprocess.PIPE, text=True, shell=True)           # I do not trust you mfs to build it yourself
         print(f"SDL2 built.")
     except subprocess.CalledProcessError as e:
         print(f"Error building SDL2:\n{e.stderr}")
 else:
     try:
-        subprocess.run(["embuilder", "build", "sdl2"], check=True, stderr=subprocess.PIPE, text=True)
+        subprocess.run(["embuilder", "build", "sdl2"], 
+                       check=True, stderr=subprocess.PIPE, text=True)
         print(f"SDL2 built.")
     except subprocess.CalledProcessError as e:
         print(f"Error building SDL2:\n{e.stderr}")

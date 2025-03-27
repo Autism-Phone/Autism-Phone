@@ -1,9 +1,6 @@
 #drawing-box {
-    width: 70%;
-    height: 65vh;
-    border-color: black;
-    border-width: 1px;
-    border-style: solid;
+    width: 1000px;
+    height: 600px;
     margin: auto; 
     display: flex; 
     justify-content: center; 
@@ -13,4 +10,15 @@
 
 canvas {
     display: block;
+}
+
+#toolbox {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+span {
+    display: flex;
+    gap: 10px;
 }
