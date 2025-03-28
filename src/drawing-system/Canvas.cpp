@@ -71,13 +71,12 @@ void Canvas::render_frame() {
 }
 
 void Canvas::get_mouse_pos() {
-    last_mouse_pos = current_mouse_pos;
     SDL_GetMouseState(&current_mouse_pos.x, &current_mouse_pos.y);
 }
 
 void Canvas::draw() {
     if (!drawing) {
-        return;
+        
     }
 
     int dx = abs(current_mouse_pos.x - last_mouse_pos.x);
