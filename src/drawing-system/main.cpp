@@ -4,7 +4,6 @@
 #include <cmath>
 
 #include "Utils.h"
-#include "ScreenObject.h"
 #include "Canvas.h"
 
 #include <emscripten.h>
@@ -12,16 +11,8 @@
 #include <emscripten/html5.h>
 #include <SDL2/SDL.h>
 
-double last_time = SDL_GetTicks();
-const double update_interval = 10.0;
-double last_update = 0.0;
-bool drawing = false;
-
 const int CANVAS_WIDTH = 1000;
 const int CANVAS_HEIGHT = 600;
-
-Position mouse_pos = {0, 0};
-Position last_mouse_pos = {0, 0};
 
 Color brush_color = {0, 255, 0};
 int brush_size = 10;
@@ -29,7 +20,7 @@ Shape brush_shape = Shape::CIRCLE;
 
 Color background_color = {128, 0, 0};
 
-std::queue<ScreenObject> update_queue;
+Canvas* canvas = nullptr;
 
 void init() {
     SDL_version compiled;
@@ -47,94 +38,21 @@ void init() {
 		throw("SDL failed to initialise");
 	}
 
-    Canvas canvas(CANVAS_WIDTH, CANVAS_HEIGHT, background_color, "Drawing System");
-}
-
-void update_mouse_pos() {
-    last_mouse_pos = mouse_pos;
-    SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
-}
-
-void render() {
-    SDL_RenderClear(renderer);
-
-    SDL_UpdateTexture(texture, nullptr, pixels, sizeof(Color) * CANVAS_WIDTH);
-    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
-    SDL_RenderPresent(renderer);
-}
-
-void draw() {
-    int dx = abs(mouse_pos.x - last_mouse_pos.x);
-    int dy = abs(mouse_pos.y - last_mouse_pos.y);
-    int steps = std::max(dx, dy);
-
-    if (steps == 0) {
-        update_queue.push(ScreenObject(mouse_pos, brush_size, brush_shape, brush_color));
-        return;
-    }
-
-    float x_inc = (float)(mouse_pos.x - last_mouse_pos.x) / steps;
-    float y_inc = (float)(mouse_pos.y - last_mouse_pos.y) / steps;
-    
-    float x = last_mouse_pos.x;
-    float y = last_mouse_pos.y;
-
-    for (int i = 0; i <= steps; i++) {
-        Position interpolated_pos = { (int)(x), (int)(y) };
-        update_queue.push(ScreenObject(interpolated_pos, brush_size, brush_shape, brush_color));
-        x += x_inc;
-        y += y_inc;
-    }
-}
-
-
-void update_screen() {
-    while (!update_queue.empty()) {
-        ScreenObject obj = update_queue.front();
-        obj.draw(pixels, CANVAS_WIDTH, CANVAS_HEIGHT);
-        update_queue.pop();
-    }
-}
-
-void input() {
-    switch (event->type) {
-        case SDL_MOUSEBUTTONDOWN:
-            drawing = true;
-            break;
-        case SDL_MOUSEBUTTONUP:
-            drawing = false;
-            break;
-        case SDL_QUIT:
-            emscripten_cancel_main_loop();
-            break;
-        default:
-            break;
-    }
+    canvas = new Canvas(CANVAS_WIDTH, CANVAS_HEIGHT, background_color, "Drawing System");
+    canvas->brush = Brush(brush_color, brush_size, brush_shape);
 }
 
 void main_loop() {
-    double current_time = SDL_GetTicks();
-    double delta_time = current_time - last_time;
-    last_time = current_time;
+    canvas->render_frame();
 
-    render();
-
-    while (SDL_PollEvent(event)) {
-        input();
+    while (SDL_PollEvent(canvas->event)) {
+        canvas->input();
     }
 
-    update_mouse_pos();
+    canvas->get_mouse_pos();
+    canvas->draw();
 
-    if (drawing) {
-        draw();
-    }
-
-    last_update += delta_time;
-
-    if (last_update > update_interval) {
-        update_screen();
-        last_update -= update_interval;
-    }
+    canvas->check_update();
 }
 
 int main() {

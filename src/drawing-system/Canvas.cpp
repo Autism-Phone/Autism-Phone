@@ -1,5 +1,4 @@
 #include "Canvas.h"
-#include <emscripten/stack.h>
 
 Canvas::Canvas(int width, int height, Color background_color, std::string name) 
     : width(width), height(height), background_color(background_color), name(name) {
@@ -61,4 +60,79 @@ Canvas::~Canvas() {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     delete event;
+}
+
+void Canvas::render_frame() {
+    SDL_RenderClear(renderer);
+
+    SDL_UpdateTexture(texture, nullptr, pixelBuffer, sizeof(Color) * width);
+    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+    SDL_RenderPresent(renderer);
+}
+
+void Canvas::get_mouse_pos() {
+    last_mouse_pos = current_mouse_pos;
+    SDL_GetMouseState(&current_mouse_pos.x, &current_mouse_pos.y);
+}
+
+void Canvas::draw() {
+    if (!drawing) {
+        return;
+    }
+
+    int dx = abs(current_mouse_pos.x - last_mouse_pos.x);
+    int dy = abs(current_mouse_pos.y - last_mouse_pos.y);
+    int steps = std::max(dx, dy);
+
+    if (steps == 0) {
+        update_queue.push(ScreenObject(current_mouse_pos, brush.size, brush.shape, brush.color));
+        return;
+    }
+
+    float x_inc = (float)(current_mouse_pos.x - last_mouse_pos.x) / steps;
+    float y_inc = (float)(current_mouse_pos.y - last_mouse_pos.y) / steps;
+    
+    float x = last_mouse_pos.x;
+    float y = last_mouse_pos.y;
+
+    for (int i = 0; i <= steps; i++) {
+        Position interpolated_pos = { (int)(x), (int)(y) };
+        update_queue.push(ScreenObject(interpolated_pos, brush.size, brush.shape, brush.color));
+        x += x_inc;
+        y += y_inc;
+    }
+}
+
+void Canvas::input() {
+    switch (event->type) {
+        case SDL_MOUSEBUTTONDOWN:
+            drawing = true;
+            break;
+        case SDL_MOUSEBUTTONUP:
+            drawing = false;
+            break;
+        default:
+            break;
+    }
+}
+
+void Canvas::check_update() {
+    double current_time = SDL_GetTicks();
+    double delta_time = current_time - last_time;
+    last_time = current_time;
+
+    last_update += delta_time;
+
+    if (last_update >= update_interval) {
+        update_screen();
+        last_update = 0;
+    }
+}
+
+void Canvas::update_screen() {
+    while(!update_queue.empty()) {
+        ScreenObject currentObject = update_queue.front();
+        currentObject.draw(pixelBuffer, width, height);
+        update_queue.pop();
+    }
 }
