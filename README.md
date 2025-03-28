@@ -3,7 +3,7 @@
 # Nie działa? Przeczytaj!
 ## Niestety to paskudne cpp trzeba skompilować
 - Trzeba pobrać emscriptena [tutaj](https://emscripten.org/docs/getting_started/downloads.html)
-- Trzeba odpalić skrypt `compile.py'
+- Trzeba odpalić skrypt `compile.py`
 - Jeżeli to nie zadziała można zacząć płakać
 
 ## Ewentualnie mamy error typu PEBKAC
