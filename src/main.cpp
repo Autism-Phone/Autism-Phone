@@ -4,28 +4,14 @@
 #include <queue>
 #include <cmath>
 
+#include "include/Utils.h"
+#include "include/ScreenObject.h"
+#include "include/Canvas.h"
+
 #include <emscripten.h>
 #include <emscripten/stack.h>
 #include <emscripten/html5.h>
 #include <SDL2/SDL.h>
-
-struct Color {
-    uint8_t r, g, b;
-};
-
-struct Position {
-    int x, y;
-};
-
-enum Tool {
-    BRUSH,
-    ERASER
-};
-
-enum Shape {
-    CIRCLE,
-    SQUARE
-};
 
 Color* pixels;
 
@@ -47,63 +33,11 @@ Position last_mouse_pos = {0, 0};
 
 Color brush_color = {0, 255, 0};
 int brush_size = 10;
-Shape brush_shape = CIRCLE;
+Shape brush_shape = Shape::CIRCLE;
 
 Color background_color = {128, 0, 0};
 
-class Screen_Object {
-private:
-    void SetPixel(int x, int y) {
-        if (x >= 0 && x < CANVAS_WIDTH && y >= 0 && y < CANVAS_HEIGHT) {
-            pixels[y * CANVAS_WIDTH + x] = color;
-        }
-    }
-
-    void draw_circle() {
-        for (int y = -radius; y <= radius; y++) {
-            for (int x = -radius; x <= radius; x++) {
-                if (x * x + y * y <= radius * radius) {
-                    SetPixel(center.x + x, center.y + y);
-                }
-            }
-        }
-    }
-
-    void draw_square() {
-        for (int i = 0; i < radius; i++) {
-            for (int j = 0; j < radius; j++) {
-                int x = center.x + i - radius / 2;
-                int y = center.y + j - radius / 2;
-
-                SetPixel(x, y);
-            }
-        }
-    }
-
-public:
-    Screen_Object(Position center, int radius, Shape shape, Color color) 
-        : center(center), radius(radius), shape(shape), color(color) {}
-
-    Position center;
-    int radius;
-    Shape shape;
-    Color color;
-
-    void draw() {
-        switch (shape) {
-            case CIRCLE:
-                draw_circle();
-                break;
-            case SQUARE:
-                draw_square();
-                break;
-            default:
-                break;
-        } 
-    }
-};
-
-std::queue<Screen_Object> update_queue;
+std::queue<ScreenObject> update_queue;
 
 void init() {
     SDL_version compiled;
@@ -183,7 +117,7 @@ void draw() {
     int steps = std::max(dx, dy);
 
     if (steps == 0) {
-        update_queue.push(Screen_Object(mouse_pos, brush_size, brush_shape, brush_color));
+        update_queue.push(ScreenObject(mouse_pos, brush_size, brush_shape, brush_color));
         return;
     }
 
@@ -195,7 +129,7 @@ void draw() {
 
     for (int i = 0; i <= steps; i++) {
         Position interpolated_pos = { (int)(x), (int)(y) };
-        update_queue.push(Screen_Object(interpolated_pos, brush_size, brush_shape, brush_color));
+        update_queue.push(ScreenObject(interpolated_pos, brush_size, brush_shape, brush_color));
         x += x_inc;
         y += y_inc;
     }
@@ -204,8 +138,8 @@ void draw() {
 
 void update_screen() {
     while (!update_queue.empty()) {
-        Screen_Object obj = update_queue.front();
-        obj.draw();
+        ScreenObject obj = update_queue.front();
+        obj.draw(pixels, CANVAS_WIDTH, CANVAS_HEIGHT);
         update_queue.pop();
     }
 }

@@ -13,7 +13,7 @@ def compile(file):
     cmd = [
         "emcc", 
         file, 
-        "-o", output_file, 
+        "-o", output_file,
         "-O3",
         "-s", "EXPORTED_RUNTIME_METHODS=ccall,cwrap",
         "-s", "EXPORTED_FUNCTIONS=_main",
