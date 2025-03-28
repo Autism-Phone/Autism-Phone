@@ -1,4 +1,3 @@
-#include <iostream>
 #include <malloc.h>
 #include <alloca.h>
 #include <queue>
@@ -12,13 +11,6 @@
 #include <emscripten/stack.h>
 #include <emscripten/html5.h>
 #include <SDL2/SDL.h>
-
-Color* pixels;
-
-SDL_Window* window = nullptr;
-SDL_Renderer* renderer = nullptr;
-SDL_Event* event = nullptr;
-SDL_Texture* texture = nullptr;
 
 double last_time = SDL_GetTicks();
 const double update_interval = 10.0;
@@ -55,47 +47,7 @@ void init() {
 		throw("SDL failed to initialise");
 	}
 
-	window = SDL_CreateWindow("Rysujcie", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, CANVAS_WIDTH, CANVAS_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-
-	if (window == nullptr) {
-		SDL_Quit();
-		throw("Failed to create window");
-	}
-
-	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-	
-	if (renderer == nullptr) {
-        throw("Failed to create renderer");
-		SDL_DestroyWindow(window);
-		SDL_Quit();
-	}
-
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STREAMING, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-    if (texture == nullptr) {
-        std::cerr << SDL_GetError() << std::endl;
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        throw("Failed to create texture");
-    }
-
-	event = new SDL_Event();
-
-    size_t free_stack = emscripten_stack_get_free();
-    size_t pixels_size = CANVAS_WIDTH * CANVAS_HEIGHT * sizeof(Color);
-
-    if (free_stack < pixels_size) {
-        std::cerr << "Not enough stack space" << std::endl;
-        pixels = (Color*)malloc(pixels_size);
-    } else {
-        std::cout << "Using stack memory" << std::endl;
-        pixels = (Color*)alloca(pixels_size);
-    }
-
-    for (int i = 0; i < CANVAS_WIDTH * CANVAS_HEIGHT; i++) {
-        pixels[i] = background_color;
-    }
+    Canvas canvas(CANVAS_WIDTH, CANVAS_HEIGHT, background_color, "Drawing System");
 }
 
 void update_mouse_pos() {
