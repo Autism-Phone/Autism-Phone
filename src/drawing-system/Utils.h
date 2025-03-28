@@ -26,3 +26,8 @@ enum Shape {
     CIRCLE,
     SQUARE
 };
+
+enum Allocation {
+    STACK,
+    HEAP
+};

@@ -4,9 +4,9 @@
 #include <queue>
 #include <cmath>
 
-#include "include/Utils.h"
-#include "include/ScreenObject.h"
-#include "include/Canvas.h"
+#include "Utils.h"
+#include "ScreenObject.h"
+#include "Canvas.h"
 
 #include <emscripten.h>
 #include <emscripten/stack.h>

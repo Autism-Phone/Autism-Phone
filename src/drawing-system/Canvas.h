@@ -8,9 +8,9 @@ public:
 
     ~Canvas();
 
-    Color* pixels;
-    int width;
-    int height;
+    Color* pb;
+    u32 width;
+    u32 height;
     Color background_color;
-    bool alloc_type;
+    Allocation alloc_type;
 };
