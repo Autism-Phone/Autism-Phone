@@ -5,6 +5,7 @@
 
 #include "Utils.h"
 #include "Canvas.h"
+#include "ColorInput.h"
 
 #include <emscripten.h>
 #include <emscripten/stack.h>
@@ -14,13 +15,15 @@
 const int CANVAS_WIDTH = 1000;
 const int CANVAS_HEIGHT = 600;
 
-Color brush_color = {0, 255, 0};
 int brush_size = 10;
-Shape brush_shape = Shape::CIRCLE;
+Shape brush_shape = Shape::SQUARE;
+
+Color brush_color = {0, 255, 0};
 
 Color background_color = {128, 0, 0};
 
 Canvas* canvas = nullptr;
+ColorInput* color_input = nullptr;
 
 void init() {
     SDL_version compiled;
@@ -40,6 +43,8 @@ void init() {
 
     canvas = new Canvas(CANVAS_WIDTH, CANVAS_HEIGHT, background_color, "Drawing System");
     canvas->brush = Brush(brush_color, brush_size, brush_shape);
+
+    color_input = new ColorInput("color_input");
 }
 
 void main_loop() {
@@ -48,6 +53,10 @@ void main_loop() {
     while (SDL_PollEvent(canvas->event)) {
         canvas->input();
     }
+
+    brush_color = color_input->get_color();
+
+    canvas->brush.color = brush_color;
 
     canvas->get_mouse_pos();
     canvas->draw();
