@@ -44,7 +44,7 @@ void init() {
     canvas = new Canvas(CANVAS_WIDTH, CANVAS_HEIGHT, background_color, "Drawing System");
     canvas->brush = Brush(brush_color, brush_size, brush_shape);
 
-    color_input = new ColorInput("color_input");
+    color_input = new ColorInput("color-picker");
 }
 
 void main_loop() {
