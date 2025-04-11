@@ -5,15 +5,15 @@
 #include <emscripten.h>
 #include <emscripten/val.h>
 
-class NumberInput {
+class ListInput {
 private:
     emscripten::val inputBox;
 
-    int number = 10;
+    int element = 10;
 
 public:
-    NumberInput(std::string id);
+    ListInput(std::string id);
     std::string id;
 
-    int get_number();
+    int get_element();
 };

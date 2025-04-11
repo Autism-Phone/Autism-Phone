@@ -7,6 +7,7 @@
 #include "Canvas.h"
 #include "ColorInput.h"
 #include "NumberInput.h"
+#include "ListInput.h"
 
 #include <emscripten.h>
 #include <emscripten/stack.h>
@@ -26,6 +27,7 @@ Color background_color = {128, 0, 0};
 Canvas* canvas = nullptr;
 ColorInput* color_input = nullptr;
 NumberInput* size_input = nullptr;
+ListInput* shape_input = nullptr;
 
 void init() {
     SDL_version compiled;
@@ -48,6 +50,7 @@ void init() {
 
     color_input = new ColorInput("color-picker");
     size_input = new NumberInput("size-picker");
+    shape_input = new ListInput("shape-picker");
 }
 
 void main_loop() {
@@ -62,6 +65,8 @@ void main_loop() {
 
     brush_size = size_input->get_number();
     canvas->brush.size = brush_size;
+
+    brush_shape = static_cast<Shape>(shape_input->get_element());
     canvas->brush.shape = brush_shape;
 
     canvas->get_mouse_pos();
