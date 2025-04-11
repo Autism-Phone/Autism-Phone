@@ -5,6 +5,9 @@
 
 #include "Utils.h"
 #include "Canvas.h"
+#include "ColorInput.h"
+#include "NumberInput.h"
+#include "ListInput.h"
 
 #include <emscripten.h>
 #include <emscripten/stack.h>
@@ -14,13 +17,17 @@
 const int CANVAS_WIDTH = 1000;
 const int CANVAS_HEIGHT = 600;
 
-Color brush_color = {0, 255, 0};
 int brush_size = 10;
-Shape brush_shape = Shape::CIRCLE;
+Shape brush_shape = Shape::SQUARE;
+
+Color brush_color = {0, 255, 0};
 
 Color background_color = {128, 0, 0};
 
 Canvas* canvas = nullptr;
+ColorInput* color_input = nullptr;
+NumberInput* size_input = nullptr;
+ListInput* shape_input = nullptr;
 
 void init() {
     SDL_version compiled;
@@ -40,6 +47,10 @@ void init() {
 
     canvas = new Canvas(CANVAS_WIDTH, CANVAS_HEIGHT, background_color, "Drawing System");
     canvas->brush = Brush(brush_color, brush_size, brush_shape);
+
+    color_input = new ColorInput("color-picker");
+    size_input = new NumberInput("size-picker");
+    shape_input = new ListInput("shape-picker");
 }
 
 void main_loop() {
@@ -48,6 +59,15 @@ void main_loop() {
     while (SDL_PollEvent(canvas->event)) {
         canvas->input();
     }
+
+    brush_color = color_input->get_color();
+    canvas->brush.color = brush_color;
+
+    brush_size = size_input->get_number();
+    canvas->brush.size = brush_size;
+
+    brush_shape = static_cast<Shape>(shape_input->get_element());
+    canvas->brush.shape = brush_shape;
 
     canvas->get_mouse_pos();
     canvas->draw();

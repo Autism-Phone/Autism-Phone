@@ -21,10 +21,10 @@ void ScreenObject::draw_circle(Color *PixelBuffer, int CANVAS_WIDTH, int CANVAS_
 }
 
 void ScreenObject::draw_square(Color *PixelBuffer, int CANVAS_WIDTH, int CANVAS_HEIGHT) {
-    for (int i = 0; i < radius; i++) {
-        for (int j = 0; j < radius; j++) {
-            int x = center.x + i - radius / 2;
-            int y = center.y + j - radius / 2;
+    for (int i = 0; i < radius * 2; i++) {
+        for (int j = 0; j < radius * 2; j++) {
+            int x = center.x + i - radius;
+            int y = center.y + j - radius;
 
             SetPixel(x, y, PixelBuffer, CANVAS_WIDTH, CANVAS_HEIGHT);
         }
