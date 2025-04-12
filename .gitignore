@@ -1,3 +1,4 @@
 scripts/compiled/*
 .vscode/settings.json
 .DS_Store
+**/__pycache__/
