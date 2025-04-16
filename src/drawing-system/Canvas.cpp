@@ -80,6 +80,10 @@ void Canvas::draw() {
         return;
     }
 
+    if (erasing) {
+        brush.color = background_color;
+    }
+
     int dx = abs(current_mouse_pos.x - last_mouse_pos.x);
     int dy = abs(current_mouse_pos.y - last_mouse_pos.y);
     int steps = std::max(dx, dy);
@@ -100,19 +104,6 @@ void Canvas::draw() {
         update_queue.push(ScreenObject(interpolated_pos, brush.size, brush.shape, brush.color));
         x += x_inc;
         y += y_inc;
-    }
-}
-
-void Canvas::input() {
-    switch (event->type) {
-        case SDL_MOUSEBUTTONDOWN:
-            drawing = true;
-            break;
-        case SDL_MOUSEBUTTONUP:
-            drawing = false;
-            break;
-        default:
-            break;
     }
 }
 

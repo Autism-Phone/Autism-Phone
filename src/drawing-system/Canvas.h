@@ -20,8 +20,6 @@ private:
     SDL_Renderer* renderer = nullptr;
     SDL_Texture* texture = nullptr;
 
-    bool drawing = false;
-
     double last_time = 0;
 
     const double update_interval = 10.0;
@@ -36,7 +34,6 @@ public:
     void render_frame();
     void get_mouse_pos();
     void draw();
-    void input();
     void check_update();
     void clear_canvas();
 
@@ -45,6 +42,9 @@ public:
     u32 width;
     u32 height;
     Color background_color;
+
+    bool drawing = false;
+    bool erasing = false;
 
     std::string name;
     std::queue<ScreenObject> update_queue;
