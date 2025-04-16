@@ -29,6 +29,10 @@ Input<s32>* size_input = nullptr;
 Input<Shape>* shape_input = nullptr;
 Button *clear_button = nullptr;
 
+ButtonState l_mouse = UP;
+ButtonState r_mouse = UP;
+ButtonState m_mouse = UP;
+
 void init() {
     SDL_version compiled;
     SDL_version linked;
@@ -56,11 +60,63 @@ void init() {
     });
 }
 
+void input(SDL_Event* event) {
+    switch (event->type) {
+        case SDL_MOUSEBUTTONDOWN:
+            switch (event->button.button) {
+                case SDL_BUTTON_LEFT:
+                    l_mouse = DOWN;
+                    break;
+                case SDL_BUTTON_RIGHT:
+                    r_mouse = DOWN;
+                    break;
+                case SDL_BUTTON_MIDDLE:
+                    m_mouse = DOWN;
+                    break;
+                default:
+                    break;
+            }
+
+            break;
+        case SDL_MOUSEBUTTONUP:
+            switch (event->button.button) {
+                case SDL_BUTTON_LEFT:
+                    l_mouse = UP;
+                    break;
+                case SDL_BUTTON_RIGHT:
+                    r_mouse = UP;
+                    break;
+                case SDL_BUTTON_MIDDLE:
+                    m_mouse = UP;
+                    break;
+                default:
+                    break;
+            }
+
+            break;
+        default:
+            break;
+    }
+
+    if (l_mouse == DOWN) {
+        canvas->draw();
+        canvas->drawing = true;
+        canvas->erasing = false;
+    } else if (r_mouse == DOWN && l_mouse == UP) {
+        canvas->draw();
+        canvas->drawing = true;
+        canvas->erasing = true;
+    } else if (l_mouse == UP && r_mouse == UP) {
+        canvas->drawing = false;
+        canvas->erasing = false;
+    }
+}
+
 void main_loop() {
     canvas->render_frame();
 
     while (SDL_PollEvent(canvas->event)) {
-        canvas->input();
+        input(canvas->event);
     }
 
     brush_color = color_input->get_value();
