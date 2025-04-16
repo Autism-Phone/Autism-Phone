@@ -6,6 +6,7 @@
 #include "Utils.h"
 #include "Canvas.h"
 #include "Inputs.h"
+#include "Button.h"
 
 #include <emscripten.h>
 #include <emscripten/stack.h>
@@ -26,6 +27,7 @@ Canvas* canvas = nullptr;
 Input<Color>* color_input = nullptr;
 Input<s32>* size_input = nullptr;
 Input<Shape>* shape_input = nullptr;
+Button *clear_button = nullptr;
 
 void init() {
     SDL_version compiled;
@@ -49,6 +51,9 @@ void init() {
     color_input = new Input<Color>("color-picker");
     size_input = new Input<s32>("size-picker");
     shape_input = new Input<Shape>("shape-picker");
+    clear_button = new Button("clear-button", []() {
+        canvas->clear_canvas();
+    });
 }
 
 void main_loop() {

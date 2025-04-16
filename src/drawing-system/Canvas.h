@@ -27,6 +27,8 @@ private:
     const double update_interval = 10.0;
     double last_update = 0.0;
 
+    void update_screen();
+
 public:
     Canvas(int width, int height, Color background_color, std::string name);
     ~Canvas();
@@ -36,7 +38,7 @@ public:
     void draw();
     void input();
     void check_update();
-    void update_screen();
+    void clear_canvas();
 
     SDL_Event* event = nullptr;
 

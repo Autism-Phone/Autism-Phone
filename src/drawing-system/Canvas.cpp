@@ -129,6 +129,16 @@ void Canvas::check_update() {
     }
 }
 
+void Canvas::clear_canvas() {
+    for (int i = 0; i < width * height; i++) {
+        pixelBuffer[i] = background_color;
+    }
+
+    update_queue = std::queue<ScreenObject>();
+
+    render_frame();
+}
+
 void Canvas::update_screen() {
     while(!update_queue.empty()) {
         ScreenObject currentObject = update_queue.front();
