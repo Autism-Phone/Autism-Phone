@@ -10,7 +10,7 @@
 
 #include <emscripten.h>
 #include <emscripten/stack.h>
-#include <emscripten/html5.h>
+
 #include <SDL2/SDL.h>
 
 const int CANVAS_WIDTH = 1000;
@@ -21,7 +21,7 @@ Shape brush_shape = Shape::SQUARE;
 
 Color brush_color = {0, 255, 0};
 
-Color background_color = {128, 0, 0};
+Color background_color = {255, 255, 255};
 
 Canvas* canvas = nullptr;
 Input<Color>* color_input = nullptr;
