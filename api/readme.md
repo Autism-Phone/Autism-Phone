@@ -1,10 +1,29 @@
-Oto zaktualizowane README zgodne z obecną implementacją API:
 
-```markdown
-# Gra "Telefony" API Documentation
+# Gra "Autism Phone" API Documentation
 
-## Endpointy
+### Tworzenie bazy danych
+```sql
+create user 'autism'@localhost identified by 'h4s10';
 
+GRANT ALL PRIVILEGES ON *.* TO 'autism'@localhost IDENTIFIED BY 'h4s10';
+CREATE DATABASE IF NOT EXISTS game_sessions;
+
+USE game_sessions;
+
+CREATE TABLE games (
+    id VARCHAR(36) PRIMARY KEY,
+    invite_code VARCHAR(8) UNIQUE,
+    status ENUM('waiting', 'in_progress', 'finished') DEFAULT 'waiting',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    max_players INT DEFAULT 10
+);
+CREATE TABLE game_players (
+    game_id VARCHAR(36) NOT NULL,
+    player_id VARCHAR(36) NOT NULL,
+    PRIMARY KEY (game_id, player_id),
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+);
+```
 ### 0. Uruchomienie API
 ```bash
 uvicorn main:app --port 2137 --host 0.0.0.0
