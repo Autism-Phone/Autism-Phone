@@ -1,8 +1,7 @@
 ## NOT pip requirements
 
-emdsk => 4.0.4
-fastapi => 0.115.12
-mysql-connector-python => 9.2.0 
-uvicorn => 0.34.0
+fastapi==0.115.12
+mysql-connector-python==9.2.0 
+uvicorn==0.34.0
 
 ## MAYBE pip requirements

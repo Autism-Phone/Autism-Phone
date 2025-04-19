@@ -1,3 +1,7 @@
+### 0. Uruchomienie Api
+```bash
+uvicorn main:app --port 2137 --host 0.0.0.0
+```
 ### 1. Inicjalizacja gry
 **Flow front-endu:**
 ```javascript
@@ -11,7 +15,7 @@ Czekaj na graczy (polling co 1s na /game-state)
 ### 2. Dołączanie graczy
 **Flow dla każdego gracza:**
 ```javascript
-POST /join-game {"game_code": "ABCD1234", "name": "Player1"} → 
+POST /join-game {"invite_code": "ABCD1234", "name": "Player1"} → 
    {player_id: "uuid", game_id: "uuid"}
 
 Zapisz player_id i game_id w localStorage
@@ -19,6 +23,9 @@ Rozpocznij polling /game-state co 1 sekundę
 ```
 
 ### 3. Faza oczekiwania na start
+```javascript
+GET /game-state/{game_id}?player_id={player_id}
+```
 **Przykładowa odpowiedź /game-state:**
 ```json
 {
