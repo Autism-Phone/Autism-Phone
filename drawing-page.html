@@ -12,13 +12,16 @@
 
     <span>
         <div id="drawing-box">
-            <canvas id="canvas"></canvas>
+            <canvas id="canvas" oncontextmenu="return false"></canvas>
         </div>
 
         <div id="toolbox">
             <button id="clear-button">Clear</button>
+            <p>Color</p>
             <input type="color" id="color-picker" value="#000000">
+            <p>Size</p>
             <input type="number" id="size-picker" value="5" min="1" max="100">
+            <p>Shape</p>
             <select id="shape-picker">
                 <option value=1>Square</option>
                 <option value=0>Circle</option>

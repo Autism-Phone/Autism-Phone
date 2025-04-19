@@ -33,3 +33,8 @@ enum Allocation {
     STACK,
     HEAP
 };
+
+enum ButtonState {
+    DOWN,
+    UP
+};

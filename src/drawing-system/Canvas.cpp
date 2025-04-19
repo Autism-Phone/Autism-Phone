@@ -80,6 +80,10 @@ void Canvas::draw() {
         return;
     }
 
+    if (erasing) {
+        brush.color = background_color;
+    }
+
     int dx = abs(current_mouse_pos.x - last_mouse_pos.x);
     int dy = abs(current_mouse_pos.y - last_mouse_pos.y);
     int steps = std::max(dx, dy);
@@ -103,19 +107,6 @@ void Canvas::draw() {
     }
 }
 
-void Canvas::input() {
-    switch (event->type) {
-        case SDL_MOUSEBUTTONDOWN:
-            drawing = true;
-            break;
-        case SDL_MOUSEBUTTONUP:
-            drawing = false;
-            break;
-        default:
-            break;
-    }
-}
-
 void Canvas::check_update() {
     double current_time = SDL_GetTicks();
     double delta_time = current_time - last_time;
@@ -127,6 +118,16 @@ void Canvas::check_update() {
         update_screen();
         last_update = 0;
     }
+}
+
+void Canvas::clear_canvas() {
+    for (int i = 0; i < width * height; i++) {
+        pixelBuffer[i] = background_color;
+    }
+
+    update_queue = std::queue<ScreenObject>();
+
+    render_frame();
 }
 
 void Canvas::update_screen() {
