@@ -27,6 +27,20 @@ def join_game(invite_code, player_name):
     except requests.exceptions.RequestException as e:
         print(f"Error joining game: {e}")
         return None
+    
+
+def start_game(game_id: str):
+    url = f"{BASE_URL}/start-game/{game_id}"
+    try:
+        response = requests.post(url)
+        response.raise_for_status()  # Sprawdza kod statusu HTTP
+        return response.json()
+    except requests.exceptions.HTTPError as he:
+        print(f"HTTP Error starting game: {he}\nResponse: {response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"Request Error starting game: {e}")
+    return None
+
 
 def get_game_state(game_id, player_id):
     url = f"{BASE_URL}/game-state/{game_id}"
@@ -69,3 +83,17 @@ if __name__ == "__main__":
             game_state = get_game_state(game_id, player_id)
             if game_state:
                 print("Game state:", game_state)
+            print()
+
+
+        start_response = start_game(game_id)
+        if start_response:
+            print("Game started:", start_response)
+        print()
+
+        sleep(1)
+        game_state = get_game_state(game_id, player_id)
+        if game_state:
+            print("Game state:", game_state)
+        print()
+
