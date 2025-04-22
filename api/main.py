@@ -7,7 +7,11 @@ import json
 import logging
 import asyncio
 
-app = FastAPI()
+app = FastAPI(
+    debug=True,
+    max_request_size=20_000_000  # 20MB
+)
+
 
 # Konfiguracja logowania i DB
 logging.basicConfig(level=logging.INFO)
@@ -113,37 +117,89 @@ def init_db(game_id: str):
         cursor.close()
         conn.close()
 
+
+@app.post("/start-game/{game_id}")
+async def start_game(game_id: str):
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # 1. Pobierz aktualny status z blokadą
+        cursor.execute("SELECT status FROM games WHERE id = %s FOR UPDATE", (game_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Game not found")
+            
+        current_status = result['status']
+        
+        if current_status != 'waiting':
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot start game in {current_status} status"
+            )
+        
+        # 2. Aktualizacja statusu z potwierdzeniem
+        cursor.execute(
+            "UPDATE games SET status = 'in_progress' WHERE id = %s",
+            (game_id,)
+        )
+        conn.commit()
+        
+        # 3. Weryfikacja zapisu
+        cursor.execute("SELECT status FROM games WHERE id = %s", (game_id,))
+        updated_status = cursor.fetchone()['status']
+        logger.info(f"Game {game_id} new status: {updated_status}")
+        return {"status": "success", "message": f"Game {game_id} new status: {updated_status}"}
+        
+        #return {"status": "success", "message": "Game started successfully"}
+        
+    except mysql.connector.Error as err:
+        logger.error(f"Database error: {err}")
+        raise HTTPException(500, detail="Database operation failed")
+    finally:
+        cursor.close()
+        conn.close()
+
+
 async def game_loop(game_id: str):
     logger.info(f"Starting game loop for {game_id}")
     game_conn = get_game_db(game_id)
-    main_conn = mysql.connector.connect(**DB_CONFIG)
-    total_players = 0
+    
+    main_conn = mysql.connector.connect(
+        **DB_CONFIG,
+        autocommit=True
+    )
+    
     try:
-        print(f"gra {game_id} rozpoczela szukanie graczy")
-        # Wait for minimum players
+        # Szybsze sprawdzanie co 300ms
         while True:
-            game_conn = get_game_db(game_id)
-            with game_conn.cursor() as cursor:
-                cursor.execute("SELECT COUNT(*) FROM players")
-                total_players=cursor.fetchone()[0]
-                if total_players >= 2:
+            with main_conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT status FROM games WHERE id = %s",
+                    (game_id,)
+                )
+                result = cursor.fetchone()
+                
+                if result and result[0] == 'in_progress':
+                    logger.info(f"Game {game_id} status confirmed!")
                     break
-                await asyncio.sleep(1)
-        print(f"gra {game_id} znalazla graczy")
-        # Update game status
-        with main_conn.cursor() as cursor:
-            cursor.execute("UPDATE games SET status = 'in_progress' WHERE id = %s", (game_id,))
-            main_conn.commit()
+                    
+            await asyncio.sleep(0.3)
         
-        # Get total players for rounds calculation
+        
+        logger.info(f"Game {game_id} officially started!")
+        
+        # Reszta oryginalnej logiki
         with game_conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM players")
             total_rounds = cursor.fetchone()[0]
+
         
         # Main rounds loop
         for round_number in range(1, total_rounds + 1):
             round_type = 'text' if round_number % 2 == 1 else 'drawing'
-            duration = 20 if round_type == 'text' else 40
+            duration = 10 if round_type == 'text' else 10
             
             # Create new round
             round_id = str(uuid.uuid4())
@@ -162,11 +218,12 @@ async def game_loop(game_id: str):
             
             # Wait for round duration
             await asyncio.sleep(duration)
+            #await asyncio.sleep(5)
             with game_conn.cursor() as cursor:
                         # W game_loop po await asyncio.sleep(duration):
                 cursor.execute("SELECT COUNT(*) FROM submissions WHERE round_id = %s", (round_id,))
                 submissions_count = cursor.fetchone()[0]
-                if submissions_count < total_players:
+                if submissions_count < total_rounds:
                     logger.warning(f"Not all players submitted in round {round_number}")
         
         # Finalize game
@@ -225,65 +282,88 @@ async def join_game(request: PlayerJoin):
 @app.get("/game-state/{game_id}")
 async def get_game_state(game_id: str, player_id: str):
     try:
-        # Sprawdź status gry w głównej bazie
-        with mysql.connector.connect(**DB_CONFIG) as main_conn:
+        # 1. Sprawdź główny status gry z blokadą
+        with mysql.connector.connect(**DB_CONFIG, autocommit=True) as main_conn:
             with main_conn.cursor(dictionary=True) as main_cursor:
                 main_cursor.execute(
-                    "SELECT status FROM games WHERE id = %s",
+                    "SELECT status FROM games WHERE id = %s LOCK IN SHARE MODE",
                     (game_id,)
                 )
                 game_info = main_cursor.fetchone()
                 
                 if not game_info:
-                    raise HTTPException(404, "Game not found")
+                    raise HTTPException(404, detail="Game not found")
                 
-                if game_info['status'] == 'finished':
-                    return {"status": "finished", "message": "Game has ended"}
+                main_status = game_info['status']
 
-        with get_game_db(game_id) as conn:
-            with conn.cursor(dictionary=True) as cursor:
-                # Szukaj aktywnej rundy
-                cursor.execute("""
+        # 2. Obsłuż różne statusy
+        if main_status == 'finished':
+            return {"status": "finished", "message": "Game has ended"}
+            
+        if main_status == 'errored':
+            return {"status": "errored", "message": "Game encountered an error"}
+
+        if main_status == 'waiting':
+            return {"status": "waiting"}
+
+        # 3. Sprawdź szczegóły dla gry w toku
+        with get_game_db(game_id) as game_conn:
+            with game_conn.cursor(dictionary=True) as game_cursor:
+                # 3a. Sprawdź czy są jakiekolwiek rundy
+                game_cursor.execute("SELECT 1 FROM rounds LIMIT 1")
+                if not game_cursor.fetchone():
+                    return {"status": "starting"}
+                
+                # 3b. Znajdź aktywną rundę
+                game_cursor.execute("""
                     SELECT * FROM rounds 
                     WHERE end_time > NOW()
                     ORDER BY number ASC
                     LIMIT 1
                 """)
-                current_round = cursor.fetchone()
+                current_round = game_cursor.fetchone()
                 
-                # Jeśli brak aktywnej, weź ostatnią
+                # 3c. Jeśli brak aktywnej, weź ostatnią ukończoną
                 if not current_round:
-                    cursor.execute("""
+                    game_cursor.execute("""
                         SELECT * FROM rounds 
                         ORDER BY number DESC 
                         LIMIT 1
                     """)
-                    current_round = cursor.fetchone()
+                    current_round = game_cursor.fetchone()
+                    if not current_round:
+                        return {"status": "starting"}
                 
-                if not current_round:
-                    return {"status": "waiting"}
-                
-                # Sprawdź zgłoszenie
-                cursor.execute("""
+                # 3d. Sprawdź zgłoszenie gracza
+                game_cursor.execute("""
                     SELECT 1 FROM submissions 
                     WHERE player_id = %s AND round_id = %s
                 """, (player_id, current_round['id']))
-                
+                submitted = bool(game_cursor.fetchone())
+
+                # 3e. Oblicz pozostały czas
+                time_left = (current_round['end_time'] - datetime.now()).total_seconds()
+                time_left = max(0, round(time_left, 1))
+
                 return {
                     "status": "in_progress",
                     "round": {
                         "number": current_round['number'],
                         "type": current_round['type'],
-                        "time_left": (current_round['end_time'] - datetime.now()).total_seconds()
+                        "time_left": time_left
                     },
-                    "submitted": bool(cursor.fetchone())
+                    "submitted": submitted
                 }
-    
+
     except HTTPException as he:
         raise he
+    except mysql.connector.Error as err:
+        logger.error(f"Database error: {err}")
+        raise HTTPException(500, "Database operation failed")
     except Exception as e:
         logger.error(f"Game state error: {e}")
         raise HTTPException(500, "Could not retrieve game state")
+    
 
 @app.post("/submit")
 async def submit(submission: Submission):
