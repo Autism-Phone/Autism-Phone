@@ -7,7 +7,11 @@ import json
 import logging
 import asyncio
 
-app = FastAPI()
+app = FastAPI(
+    debug=True,
+    max_request_size=20_000_000  # 20MB
+)
+
 
 # Konfiguracja logowania i DB
 logging.basicConfig(level=logging.INFO)
@@ -219,7 +223,7 @@ async def game_loop(game_id: str):
                         # W game_loop po await asyncio.sleep(duration):
                 cursor.execute("SELECT COUNT(*) FROM submissions WHERE round_id = %s", (round_id,))
                 submissions_count = cursor.fetchone()[0]
-                if submissions_count < 3: #total_players:
+                if submissions_count < total_rounds:
                     logger.warning(f"Not all players submitted in round {round_number}")
         
         # Finalize game
