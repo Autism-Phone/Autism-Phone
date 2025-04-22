@@ -195,7 +195,7 @@ async def game_loop(game_id: str):
         # Main rounds loop
         for round_number in range(1, total_rounds + 1):
             round_type = 'text' if round_number % 2 == 1 else 'drawing'
-            duration = 20 if round_type == 'text' else 40
+            duration = 10 if round_type == 'text' else 10
             
             # Create new round
             round_id = str(uuid.uuid4())
@@ -214,6 +214,7 @@ async def game_loop(game_id: str):
             
             # Wait for round duration
             await asyncio.sleep(duration)
+            #await asyncio.sleep(5)
             with game_conn.cursor() as cursor:
                         # W game_loop po await asyncio.sleep(duration):
                 cursor.execute("SELECT COUNT(*) FROM submissions WHERE round_id = %s", (round_id,))

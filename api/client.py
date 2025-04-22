@@ -52,6 +52,49 @@ def get_game_state(game_id, player_id):
     except requests.exceptions.RequestException as e:
         print(f"Error downloading game save: {e}")
         return None
+    
+
+def submit(player_id: str, content: dict):
+    """
+    Wysyła odpowiedź gracza do serwera
+    
+    Parametry:
+    player_id (str): ID gracza
+    content (dict): Zawartość odpowiedzi w formacie zależnym od typu rundy
+    """
+    url = f"{BASE_URL}/submit"
+    payload = {
+        "player_id": player_id,
+        "content": content
+    }
+    
+    try:
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Błąd podczas wysyłania odpowiedzi: {e}")
+        return None
+    
+
+def generate_drawing() -> list:
+    """
+    Generuje tablicę 800 000 pikseli (800x1000) w formacie RGB
+    z przemiennymi białymi i czarnymi pikselami w wierszach
+    """
+    width = 2
+    height = 5
+    
+    # Generuj pojedynczy wiersz
+    row = []
+    for x in range(width):
+        if x % 2 == 0:
+            row.append([255, 255, 255])  # Biały piksel
+        else:
+            row.append([0, 0, 0])        # Czarny piksel
+    
+    # Powtórz wiersz dla całej wysokości obrazu
+    return row * height
 
 
 if __name__ == "__main__":
@@ -92,9 +135,40 @@ if __name__ == "__main__":
         print()
 
         while True:
-            sleep(1)
+            sleep(0.5)
             game_state = get_game_state(game_id, player_id)
-            if game_state:
-                print("Game state:", game_state)
-            print()
-
+            
+            if not game_state:
+                continue
+                
+            print("Game state:", game_state)
+            
+            try:
+                current_round = game_state.get("round", {})
+                time_left = float(current_round.get("time_left", 0.0))
+                round_type = current_round.get("type", "")
+                
+                if all([
+                    game_state.get("status") == "in_progress",
+                    time_left < 0.5,
+                    not game_state.get("player_has_submitted", False)
+                ]):
+                    # Generowanie zawartości w zależności od typu rundy
+                    content = {}
+                    
+                    if round_type == "text":
+                        content["text"] = "test"
+                    elif round_type == "drawing":
+                        # Tutaj dodaj logikę generowania rysunku
+                        content["drawing"] = generate_drawing()  # Twoja implementacja
+                    else:
+                        print("Nieznany typ rundy")
+                        continue
+                        
+                    # Wysłanie odpowiedzi
+                    result = submit(player_id, content)
+                    if result and result.get("status") == "success":
+                        print("Odpowiedź wysłana pomyślnie!")
+                    
+            except Exception as e:
+                print(f"Błąd: {e}")
