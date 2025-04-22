@@ -33,7 +33,7 @@ def start_game(game_id: str):
     url = f"{BASE_URL}/start-game/{game_id}"
     try:
         response = requests.post(url)
-        response.raise_for_status()  # Sprawdza kod statusu HTTP
+        response.raise_for_status()
         return response.json()
     except requests.exceptions.HTTPError as he:
         print(f"HTTP Error starting game: {he}\nResponse: {response.text}")
@@ -91,9 +91,10 @@ if __name__ == "__main__":
             print("Game started:", start_response)
         print()
 
-        sleep(1)
-        game_state = get_game_state(game_id, player_id)
-        if game_state:
-            print("Game state:", game_state)
-        print()
+        while True:
+            sleep(1)
+            game_state = get_game_state(game_id, player_id)
+            if game_state:
+                print("Game state:", game_state)
+            print()
 

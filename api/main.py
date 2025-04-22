@@ -164,7 +164,6 @@ async def game_loop(game_id: str):
     
     main_conn = mysql.connector.connect(
         **DB_CONFIG,
-        isolation_level='READ COMMITTED',
         autocommit=True
     )
     
@@ -219,7 +218,7 @@ async def game_loop(game_id: str):
                         # W game_loop po await asyncio.sleep(duration):
                 cursor.execute("SELECT COUNT(*) FROM submissions WHERE round_id = %s", (round_id,))
                 submissions_count = cursor.fetchone()[0]
-                if submissions_count < total_players:
+                if submissions_count < 3: #total_players:
                     logger.warning(f"Not all players submitted in round {round_number}")
         
         # Finalize game
@@ -229,12 +228,6 @@ async def game_loop(game_id: str):
         
     except Exception as e:
         logger.error(f"Game loop error: {e}")
-        with main_conn.cursor() as cursor:
-            cursor.execute(
-                "UPDATE games SET status = 'errored' WHERE id = %s",
-                (game_id,)
-            )
-            main_conn.commit()
     finally:
         game_conn.close()
         main_conn.close()
@@ -288,7 +281,7 @@ async def get_game_state(game_id: str, player_id: str):
         with mysql.connector.connect(**DB_CONFIG, autocommit=True) as main_conn:
             with main_conn.cursor(dictionary=True) as main_cursor:
                 main_cursor.execute(
-                    "SELECT status FROM games WHERE id = %s FOR SHARE",
+                    "SELECT status FROM games WHERE id = %s LOCK IN SHARE MODE",
                     (game_id,)
                 )
                 game_info = main_cursor.fetchone()
