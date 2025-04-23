@@ -7,6 +7,7 @@
 #include "Canvas.h"
 #include "Inputs.h"
 #include "Button.h"
+#include "Switch.h"
 
 #include <emscripten.h>
 #include <emscripten/stack.h>
@@ -28,6 +29,8 @@ Input<Color>* color_input = nullptr;
 Input<s32>* size_input = nullptr;
 Input<Shape>* shape_input = nullptr;
 Button *clear_button = nullptr;
+
+std::vector<Switch*> switchList;
 
 ButtonState l_mouse = UP;
 ButtonState r_mouse = UP;
@@ -58,6 +61,9 @@ void init() {
     clear_button = new Button("clear-button", []() {
         canvas->clear_canvas();
     });
+    switchList.push_back(new Switch("eraser", switchList));
+    switchList.push_back(new Switch("pencil", switchList));
+    switchList.push_back(new Switch("line", switchList));
 }
 
 void input(SDL_Event* event) {
