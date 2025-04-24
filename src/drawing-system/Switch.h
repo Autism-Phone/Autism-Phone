@@ -11,8 +11,6 @@ private:
     emscripten::val element;
     std::string elementId;
 
-    bool clicked = false;
-
     std::vector<Switch*> &switchList;
     
     static EM_BOOL handleClick(int eventType, const EmscriptenMouseEvent* e, void* userData);
@@ -20,4 +18,6 @@ private:
 public:
     Switch(const std::string& selector, std::vector<Switch*> &switchList);
     ~Switch();
+
+    bool clicked = false;
 };
