@@ -1,20 +1,23 @@
 #pragma once
 #include <string>
 #include <iostream>
-#include <functional>
+#include <vector>
 #include <emscripten.h>
 #include <emscripten/html5.h>
 #include <emscripten/val.h>
 
-class Button {
+class Switch {
 private:
     emscripten::val element;
     std::string elementId;
-    std::function<void()> userCallback;
+
+    std::vector<Switch*> &switchList;
     
     static EM_BOOL handleClick(int eventType, const EmscriptenMouseEvent* e, void* userData);
 
 public:
-    Button(const std::string& selector, std::function<void()> callback);
-    ~Button();
+    Switch(const std::string& selector, std::vector<Switch*> &switchList);
+    ~Switch();
+
+    bool clicked = false;
 };

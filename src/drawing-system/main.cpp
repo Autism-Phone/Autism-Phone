@@ -7,10 +7,11 @@
 #include "Canvas.h"
 #include "Inputs.h"
 #include "Button.h"
+#include "Switch.h"
 
 #include <emscripten.h>
 #include <emscripten/stack.h>
-#include <emscripten/html5.h>
+
 #include <SDL2/SDL.h>
 
 const int CANVAS_WIDTH = 1000;
@@ -21,13 +22,17 @@ Shape brush_shape = Shape::SQUARE;
 
 Color brush_color = {0, 255, 0};
 
-Color background_color = {128, 0, 0};
+Color background_color = {255, 255, 255};
+
+u32 chosen_button = 0;
 
 Canvas* canvas = nullptr;
 Input<Color>* color_input = nullptr;
 Input<s32>* size_input = nullptr;
 Input<Shape>* shape_input = nullptr;
 Button *clear_button = nullptr;
+
+std::vector<Switch*> switchList;
 
 ButtonState l_mouse = UP;
 ButtonState r_mouse = UP;
@@ -58,6 +63,9 @@ void init() {
     clear_button = new Button("clear-button", []() {
         canvas->clear_canvas();
     });
+
+    switchList.push_back(new Switch("pencil", switchList));
+    switchList.push_back(new Switch("eraser", switchList));
 }
 
 void input(SDL_Event* event) {
@@ -98,30 +106,52 @@ void input(SDL_Event* event) {
             break;
     }
 
-    if (l_mouse == DOWN) {
-        canvas->draw();
+    if (l_mouse == DOWN || r_mouse == DOWN) {
         canvas->drawing = true;
-        canvas->erasing = false;
-    } else if (r_mouse == DOWN && l_mouse == UP) {
         canvas->draw();
-        canvas->drawing = true;
-        canvas->erasing = true;
-    } else if (l_mouse == UP && r_mouse == UP) {
+    } else {
         canvas->drawing = false;
-        canvas->erasing = false;
+    }
+}
+
+void tool_input () {
+    if (switchList[chosen_button]->clicked) {
+        return;
+    }
+
+    chosen_button = 0;
+
+    for (Switch* sw : switchList) {
+        if (sw->clicked) break;
+        chosen_button++;
+    }
+
+    switch (chosen_button) {
+        case 0:
+            canvas->erasing = false;
+            break;
+        case 1:
+            canvas->erasing = true;
+            break;
+        default:
+            break;
     }
 }
 
 void main_loop() {
     canvas->render_frame();
 
+    tool_input();
+
     while (SDL_PollEvent(canvas->event)) {
         input(canvas->event);
     }
 
-    brush_color = color_input->get_value();
-    canvas->brush.color = brush_color;
-
+    if(!canvas->erasing) {
+        brush_color = color_input->get_value();
+        canvas->brush.color = brush_color;    
+    }
+    
     brush_size = size_input->get_value();
     canvas->brush.size = brush_size;
 
