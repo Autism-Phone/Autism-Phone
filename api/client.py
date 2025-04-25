@@ -73,7 +73,7 @@ def submit(player_id: str, content: dict):
     return None
     
 
-def generate_drawing() -> list:
+"""def generate_drawing() -> list:
     width = 2
     height = 5
     
@@ -84,7 +84,7 @@ def generate_drawing() -> list:
         else:
             row.append([0, 0, 0])
     
-    return row * height
+    return row * height"""
 
 
 if __name__ == "__main__":
@@ -166,14 +166,14 @@ if __name__ == "__main__":
                     if round_type == "text":
                         content["text"] = "test"
                     elif round_type == "drawing":
-                        content["drawing"] = generate_drawing()
+                        content["drawing"] = "xede568g392148923743$#!@*$&@#!*(*$@#!(*&812#N$(@!&$*())))"
                     else:
                         print("Nieznany typ rundy")
                         continue
                         
                     result = submit(player_id, content)
                     if result and result.get("status") == "success":
-                        print("Odpowiedź wysłana pomyślnie!")
+                        print("Submit succesful!")
                         help_var += 1
                     
             except Exception as e:
