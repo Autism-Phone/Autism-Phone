@@ -121,7 +121,7 @@ POST /submit
   ```
 - Dla rundy rysunkowej:
   ```json
-  {"drawing": [[255,255,255], [0,0,0], ...]}  # 800 000 elementów RGB
+  {"drawing": "coś w base64"}  # obrazek
   ```
 
 **Response (success):**
