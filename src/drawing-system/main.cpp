@@ -61,7 +61,8 @@ void init() {
         localStorage.setItem("playerId", "67890");
     });
 
-    api = new Api(GameType::DRAWING);
+    api = new Api();
+    api->round_init(GameType::DRAWING);
 
     canvas = new Canvas(CANVAS_WIDTH, CANVAS_HEIGHT, background_color, "Drawing System");
     canvas->brush = Brush(brush_color, brush_size, brush_shape);

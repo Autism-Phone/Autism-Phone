@@ -2,7 +2,58 @@
 
 using namespace emscripten;
 
-Api::Api(GameType gameType) : gameType(gameType) {
+Api::Api() {
+    
+}
+
+void Api::create_game() {
+    emscripten_fetch_attr_t attr;
+    emscripten_fetch_attr_init(&attr);
+
+    strcpy(attr.requestMethod, "POST");
+    attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+
+    attr.onsuccess = Api::onCreationSuccess;
+    attr.onerror = Api::onErrorDefault;
+
+    emscripten_fetch(&attr, "/create-game");
+}
+
+void Api::join_game(const std::string &inviteCode, const std::string &playerName) {
+    val::global("localStorage").call<void>("setItem", std::string("playerName"), playerName);
+        
+    emscripten_fetch_attr_t attr;
+    emscripten_fetch_attr_init(&attr);
+
+    strcpy(attr.requestMethod, "POST");
+    attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+
+    attr.onsuccess = Api::onJoinSuccess;
+    attr.onerror = Api::onErrorDefault;
+
+    std::string jsonPayload = "{\"invite_code\":\"" + inviteCode + "\",\"player_name\":\"" + playerName + "\"}";
+    attr.requestData = jsonPayload.c_str();
+    attr.requestDataSize = jsonPayload.size();
+
+    emscripten_fetch(&attr, "/join-game");
+}
+
+void Api::start_game() {
+    emscripten_fetch_attr_t attr;
+    emscripten_fetch_attr_init(&attr);
+
+    strcpy(attr.requestMethod, "POST");
+    attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+
+    attr.onsuccess = Api::onCreationSuccess;
+    attr.onerror = Api::onErrorDefault;
+
+    std::string url = "/start-game/" + gameId;
+
+    emscripten_fetch(&attr, url.c_str());
+}
+
+void Api::round_init(GameType gameType) {
     val gameIdVal = val::global("localStorage").call<val>("getItem", std::string("gameId"));
     val playerIdVal = val::global("localStorage").call<val>("getItem", std::string("playerId"));
 
@@ -50,7 +101,7 @@ Api::Api(GameType gameType) : gameType(gameType) {
     }
 
     gameURL = getCurrentURL();
-}   
+}
 
 double Api::fetch_time() {
     fetchGameState();
@@ -82,7 +133,7 @@ void Api::submit(Color* pixelBuffer) {
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
 
     attr.onsuccess = Api::onSubmitSuccess;
-    attr.onerror = Api::onSubmitError;
+    attr.onerror = Api::onErrorDefault;
 
     attr.requestData = jsonPayload.c_str();
     attr.requestDataSize = jsonPayload.size();
@@ -100,12 +151,76 @@ void Api::submit(const std::string &text) {
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
 
     attr.onsuccess = Api::onSubmitSuccess;
-    attr.onerror = Api::onSubmitError;
+    attr.onerror = Api::onErrorDefault;
 
     attr.requestData = jsonPayload.c_str();
     attr.requestDataSize = jsonPayload.size();
 
     emscripten_fetch(&attr, "/submit");
+}
+
+void Api::onErrorDefault(emscripten_fetch_t *fetch) {
+    printf("Fetch failed. HTTP status: %d\n", fetch->status);
+    emscripten_fetch_close(fetch);
+}
+
+void Api::onSuccessDefault(emscripten_fetch_t *fetch) {
+    printf("Fetch succeeded! HTTP status: %d\n", fetch->status);
+    emscripten_fetch_close(fetch);
+}
+
+void Api::onJoinSuccess(emscripten_fetch_t *fetch) {
+    printf("Fetch succeeded! HTTP status: %d\n", fetch->status);
+
+    Api* self = static_cast<Api*>(fetch->userData);
+
+    self->json_string = std::string((char*)fetch->data, fetch->numBytes);
+
+    emscripten_fetch_close(fetch);
+
+    EM_ASM({
+        try {
+            const json = JSON.parse(UTF8ToString($0));
+            if (json.player_id && json.game_id) {
+                stringToUTF8(json.game_id, $1, 64);
+                stringToUTF8(json.player_id, $1, 64);
+            } else {
+                console.error("player_id not found in JSON.");
+            }
+        } catch (e) {
+            console.error("Failed to parse JSON:", e);
+        }
+    }, self->json_string.c_str(), self->playerId.data());
+
+    val::global("localStorage").call<void>("setItem", std::string("playerId"), self->playerId);
+    val::global("localStorage").call<void>("setItem", std::string("gameId"), self->gameId);
+}
+
+void Api::onCreationSuccess(emscripten_fetch_t *fetch) {
+    printf("Fetch succeeded! HTTP status: %d\n", fetch->status);
+
+    Api* self = static_cast<Api*>(fetch->userData);
+
+    self->json_string = std::string((char*)fetch->data, fetch->numBytes);
+
+    emscripten_fetch_close(fetch);
+
+    EM_ASM({
+        try {
+            const json = JSON.parse(UTF8ToString($0));
+            if (json.game_id && json.invite_code) {
+                stringToUTF8(json.game_id, $1, 64);
+                stringToUTF8(json.invite_code, $2, 64);
+            } else {
+                console.error("game_id or invite_code not found in JSON.");
+            }
+        } catch (e) {
+            console.error("Failed to parse JSON:", e);
+        }
+    }, self->json_string.c_str(), self->gameId.data(), self->playerId.data());
+
+    val::global("localStorage").call<void>("setItem", std::string("gameId"), self->gameId);
+    val::global("localStorage").call<void>("setItem", std::string("inviteCode"), self->inviteCode);
 }
 
 void Api::onGetStateSuccess(emscripten_fetch_t *fetch) {
@@ -118,11 +233,6 @@ void Api::onGetStateSuccess(emscripten_fetch_t *fetch) {
     emscripten_fetch_close(fetch);
 }
 
-void Api::onGetStateError(emscripten_fetch_t *fetch) {
-    printf("Fetch failed. HTTP status: %d\n", fetch->status);
-    emscripten_fetch_close(fetch);
-}
-
 void Api::fetchGameState() {
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
@@ -131,7 +241,7 @@ void Api::fetchGameState() {
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
 
     attr.onsuccess = Api::onGetStateSuccess;
-    attr.onerror = Api::onGetStateError;
+    attr.onerror = Api::onErrorDefault;
 
     std::string url = "/game-state/" + gameId + "?playerId=" + playerId;
 
@@ -140,11 +250,6 @@ void Api::fetchGameState() {
 
 void Api::onSubmitSuccess(emscripten_fetch_t *fetch) {
     printf("Submit succeeded! HTTP status: %d\n", fetch->status);
-    emscripten_fetch_close(fetch);
-}
-
-void Api::onSubmitError(emscripten_fetch_t *fetch) {
-    printf("Submit failed. HTTP status: %d\n", fetch->status);
     emscripten_fetch_close(fetch);
 }
 
