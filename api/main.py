@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
+import os
 import uuid
 import mysql.connector
 from datetime import datetime, timedelta
@@ -12,6 +14,7 @@ app = FastAPI(
     max_request_size=20_000_000  # 20MB
 )
 
+app.mount("/", StaticFiles(directory=os.path.abspath("../static"), html=True), name="static")
 
 # Konfiguracja logowania i DB
 logging.basicConfig(level=logging.INFO)
