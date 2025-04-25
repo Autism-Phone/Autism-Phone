@@ -8,6 +8,7 @@
 #include "Inputs.h"
 #include "Button.h"
 #include "Switch.h"
+#include "Api.h"
 
 #include <emscripten.h>
 #include <emscripten/stack.h>

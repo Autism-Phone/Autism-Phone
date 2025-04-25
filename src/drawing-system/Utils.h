@@ -38,3 +38,14 @@ enum ButtonState {
     DOWN,
     UP
 };
+
+enum GameState {
+    START,
+    PLAYING,
+    END
+};
+
+enum GameType {
+    DRAWING,
+    PROMPTING
+};

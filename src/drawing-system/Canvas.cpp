@@ -130,6 +130,10 @@ void Canvas::clear_canvas() {
     render_frame();
 }
 
+Color *Canvas::get_pixel_buffer() {
+    return pixelBuffer;
+}
+
 void Canvas::update_screen() {
     while(!update_queue.empty()) {
         ScreenObject currentObject = update_queue.front();

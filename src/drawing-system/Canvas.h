@@ -37,6 +37,8 @@ public:
     void check_update();
     void clear_canvas();
 
+    Color* get_pixel_buffer();
+
     SDL_Event* event = nullptr;
 
     u32 width;
