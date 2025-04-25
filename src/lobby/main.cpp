@@ -19,8 +19,6 @@ int main() {
         : inviteCodeVal.as<std::string>();
     std::string playerName = "joe";
     api->join_game(inviteCode, playerName);
-    
-    val::global("window").set("location", std::string("drawing-page.html"));
 
     return 0;
 }

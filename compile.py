@@ -60,7 +60,7 @@ except subprocess.CalledProcessError as e:
     print(f"Error building SDL2:\n{e.stderr}")
 
 input_folder = os.path.join(os.getcwd(), "src")
-output_folder = os.path.join(os.getcwd(), "scripts", "compiled")
+output_folder = os.path.join(os.getcwd(), "static", "scripts", "compiled")
 
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
