@@ -1,0 +1,56 @@
+cmake_minimum_required(VERSION 3.13)
+project(MultiBuildWithSharedUtils)
+
+set(CMAKE_CXX_STANDARD 17)
+
+# Base paths
+set(SRC_DIR "${CMAKE_SOURCE_DIR}/src")
+set(SHARED_DIR "${SRC_DIR}/shared")
+set(OUTPUT_DIR "${CMAKE_BINARY_DIR}/scripts/compiled")
+
+file(MAKE_DIRECTORY ${OUTPUT_DIR})
+
+# Find shared utils files
+file(GLOB SHARED_SRC "${SHARED_DIR}/*.cpp")
+
+# Get all subfolders in src (excluding 'shared')
+file(GLOB SUBFOLDERS RELATIVE ${SRC_DIR} ${SRC_DIR}/*)
+
+foreach(FOLDER ${SUBFOLDERS})
+    set(FULL_PATH "${SRC_DIR}/${FOLDER}")
+
+    if(IS_DIRECTORY ${FULL_PATH} AND NOT ${FOLDER} STREQUAL "shared")
+        # All .cpp files in this folder
+        file(GLOB LOCAL_SRC "${FULL_PATH}/*.cpp")
+
+        if(LOCAL_SRC)
+            set(TARGET_NAME ${FOLDER})
+            add_executable(${TARGET_NAME} ${LOCAL_SRC} ${SHARED_SRC})
+
+            # Output path
+            set_target_properties(${TARGET_NAME} PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR}
+                OUTPUT_NAME ${TARGET_NAME}
+            )
+
+            # Include the local and shared folders
+            target_include_directories(${TARGET_NAME} PRIVATE ${FULL_PATH} ${SHARED_DIR})
+
+            # Emscripten flags
+            set_target_properties(${TARGET_NAME} PROPERTIES
+                LINK_FLAGS "
+                    -O3
+                    -s EXPORTED_FUNCTIONS=_main
+                    -s EXPORTED_RUNTIME_METHODS=ccall,cwrap
+                    -s STACK_SIZE=2000000
+                    -s USE_SDL=2
+                    -s INITIAL_MEMORY=64MB
+                    -s ALLOW_MEMORY_GROWTH=1
+                    -s USE_WEBGL2=1
+                    -s FETCH=1
+                    -lembind
+                "
+            )
+        endif()
+    endif()
+endforeach()

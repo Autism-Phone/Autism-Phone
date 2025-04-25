@@ -3,8 +3,16 @@
 using namespace emscripten;
 
 Api::Api(GameType gameType) : gameType(gameType) {
-    gameId = val::global("localStorage").call<std::string>("getItem", "gameId");
-    playerId = val::global("localStorage").call<std::string>("getItem", "playerId");
+    val gameIdVal = val::global("localStorage").call<val>("getItem", std::string("gameId"));
+    val playerIdVal = val::global("localStorage").call<val>("getItem", std::string("playerId"));
+
+    gameId = gameIdVal.isNull() || gameIdVal.isUndefined() 
+        ? "" 
+        : gameIdVal.as<std::string>();
+
+    playerId = playerIdVal.isNull() || playerIdVal.isUndefined()
+        ? ""
+        : playerIdVal.as<std::string>();
 
     if (gameId.empty() || playerId.empty()) {
         std::cerr << "Game ID or Player ID not found in localStorage." << std::endl;
@@ -40,6 +48,8 @@ Api::Api(GameType gameType) : gameType(gameType) {
         std::cerr << "Game type mismatch: expected " << gameType << ", got " << round_type_enum << std::endl;
         return;
     }
+
+    gameURL = getCurrentURL();
 }   
 
 double Api::fetch_time() {
@@ -62,24 +72,40 @@ double Api::fetch_time() {
 }
 
 void Api::submit(Color* pixelBuffer) {
+    std::string encodedData = encodeImageData(pixelBuffer);
+    std::string jsonPayload = "{\"player_id\":\"" + playerId + "\",\"content\":{\"drawing\":\"" + encodedData + "\"}}";
+
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
 
     strcpy(attr.requestMethod, "POST");
     attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
 
-    attr.onsuccess = Api::onSuccess;
-    attr.onerror = Api::onError;
+    attr.onsuccess = Api::onSubmitSuccess;
+    attr.onerror = Api::onSubmitError;
 
-    std::string url = "https://example.com/api/submit"; // Replace with your actual URL
-    attr.url = url.c_str();
+    attr.requestData = jsonPayload.c_str();
+    attr.requestDataSize = jsonPayload.size();
 
-    std::string data = "{\"gameId\":\"" + gameId + "\",\"playerId\":\"" + playerId + "\"}";
-    attr.requestData = data.c_str();
-    attr.requestDataSize = data.size();
+    emscripten_fetch(&attr, "/submit");
+}
 
-    emscripten_fetch(&attr);
-    
+void Api::submit(const std::string &text) {
+    std::string jsonPayload = "{\"player_id\":\"" + playerId + "\",\"content\":{\"text\":\"" + text + "\"}}";
+
+    emscripten_fetch_attr_t attr;
+    emscripten_fetch_attr_init(&attr);
+
+    strcpy(attr.requestMethod, "POST");
+    attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+
+    attr.onsuccess = Api::onSubmitSuccess;
+    attr.onerror = Api::onSubmitError;
+
+    attr.requestData = jsonPayload.c_str();
+    attr.requestDataSize = jsonPayload.size();
+
+    emscripten_fetch(&attr, "/submit");
 }
 
 void Api::onGetStateSuccess(emscripten_fetch_t *fetch) {
@@ -106,4 +132,40 @@ void Api::fetchGameState() {
 
     attr.onsuccess = Api::onGetStateSuccess;
     attr.onerror = Api::onGetStateError;
+
+    std::string url = "/game-state/" + gameId + "?playerId=" + playerId;
+
+    emscripten_fetch(&attr, url.c_str());
+}
+
+void Api::onSubmitSuccess(emscripten_fetch_t *fetch) {
+    printf("Submit succeeded! HTTP status: %d\n", fetch->status);
+    emscripten_fetch_close(fetch);
+}
+
+void Api::onSubmitError(emscripten_fetch_t *fetch) {
+    printf("Submit failed. HTTP status: %d\n", fetch->status);
+    emscripten_fetch_close(fetch);
+}
+
+std::string Api::encodeImageData(const Color *pixelBuffer) {
+    size_t bufferSize = 600'000;
+    unsigned const char* data = reinterpret_cast<unsigned const char*>(pixelBuffer);
+    size_t dataSize = bufferSize * sizeof(Color);
+
+    return base64_encode(data, dataSize);
+}
+
+std::string Api::getCurrentURL() {
+    char* url = (char*)EM_ASM_PTR({
+        const str = window.location.href;
+        const lengthBytes = lengthBytesUTF8(str) + 1;
+        const stringOnWasmHeap = _malloc(lengthBytes);
+        stringToUTF8(str, stringOnWasmHeap, lengthBytes);
+        return stringOnWasmHeap;
+    });
+
+    std::string urlStr(url);
+    free(url); 
+    return urlStr;
 }

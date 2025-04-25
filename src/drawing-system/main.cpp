@@ -32,6 +32,7 @@ Input<Color>* color_input = nullptr;
 Input<s32>* size_input = nullptr;
 Input<Shape>* shape_input = nullptr;
 Button *clear_button = nullptr;
+Api* api = nullptr;
 
 std::vector<Switch*> switchList;
 
@@ -54,6 +55,13 @@ void init() {
 	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
 		throw("SDL failed to initialise");
 	}
+
+    EM_ASM({ // Very temporary bs
+        localStorage.setItem("gameId", "12345");
+        localStorage.setItem("playerId", "67890");
+    });
+
+    api = new Api(GameType::DRAWING);
 
     canvas = new Canvas(CANVAS_WIDTH, CANVAS_HEIGHT, background_color, "Drawing System");
     canvas->brush = Brush(brush_color, brush_size, brush_shape);

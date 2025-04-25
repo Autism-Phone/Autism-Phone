@@ -32,6 +32,7 @@ def compile(folder):
         "-s", "INITIAL_MEMORY=64MB",
         "-s", "ALLOW_MEMORY_GROWTH=1",
         "-s", "USE_WEBGL2=1",
+        "-s", "FETCH=1",
         "-lembind",
     ]
 
