@@ -14,7 +14,7 @@ app = FastAPI(
     max_request_size=20_000_000  # 20MB
 )
 
-app.mount("/", StaticFiles(directory=os.path.abspath("../static"), html=True), name="static")
+app.mount("/static", StaticFiles(directory=os.path.abspath("../static"), html=True), name="static")
 
 # Konfiguracja logowania i DB
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +26,6 @@ DB_CONFIG = {
     "password": "h4s10",
     "database": "game_sessions"
 }
-
 class GameCreate(BaseModel):
     max_players: int = 10
 

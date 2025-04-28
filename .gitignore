@@ -1,5 +1,5 @@
-static/scripts/compiled/*
 .vscode/settings.json
 .DS_Store
 **/__pycache__/
 .venv/
+static/scripts/compiled/*

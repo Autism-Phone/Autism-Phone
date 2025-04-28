@@ -6,6 +6,7 @@
 
 #include "Utils.h"
 #include "base64.h"
+#include "json.hpp"
 
 #include <emscripten.h>
 #include <emscripten/val.h>
@@ -27,7 +28,10 @@ private:
     std::string gameId, playerId, inviteCode;
     std::string json_string;
     std::string gameURL;
+    std::string playerName = "joe";
     GameType gameType;
+
+    std::string requestDataBuffer;
 
     static void onErrorDefault(emscripten_fetch_t* fetch);
     static void onSuccessDefault(emscripten_fetch_t* fetch);

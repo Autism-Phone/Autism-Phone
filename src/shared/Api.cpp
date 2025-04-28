@@ -1,6 +1,7 @@
 #include "Api.h"
 
 using namespace emscripten;
+using json = nlohmann::json;
 
 Api::Api() {
     
@@ -31,9 +32,13 @@ void Api::join_game(const std::string &inviteCode, const std::string &playerName
     attr.onsuccess = Api::onJoinSuccess;
     attr.onerror = Api::onErrorDefault;
 
-    std::string jsonPayload = "{\"invite_code\":\"" + inviteCode + "\",\"player_name\":\"" + playerName + "\"}";
-    attr.requestData = jsonPayload.c_str();
-    attr.requestDataSize = jsonPayload.size();
+    json j = {
+        {"invite_code", inviteCode},
+        {"name", playerName}
+    };
+    requestDataBuffer = j.dump();
+    attr.requestData = requestDataBuffer.c_str();
+    attr.requestDataSize = requestDataBuffer.size();
 
     emscripten_fetch(&attr, "/join-game");
 }
@@ -72,23 +77,15 @@ void Api::round_init(GameType gameType) {
 
     fetchGameState();
 
-    char round_type[64] = {0};
+    json json = json::parse(json_string);
 
-    EM_ASM({
-        try {
-            const json = JSON.parse(UTF8ToString($0));
-            const type = json.round?.type || "";
-            stringToUTF8(type, $1, 64);
-        } catch (e) {
-            console.error("Failed to parse JSON or get round type:", e);
-        }
-    }, json_string.c_str(), round_type);
+    std::string round_type = json["round"]["type"].get<std::string>();
 
     GameType round_type_enum;
 
-    if (strcmp(round_type, "drawing") == 0) {
+    if (round_type == "drawing") {
         round_type_enum = GameType::DRAWING;
-    } else if (strcmp(round_type, "prompting") == 0) {
+    } else if (round_type == "writing") {
         round_type_enum = GameType::PROMPTING;
     } else {
         std::cerr << "Unknown round type: " << round_type << std::endl;
@@ -105,26 +102,24 @@ void Api::round_init(GameType gameType) {
 
 double Api::fetch_time() {
     fetchGameState();
-    double time_left = EM_ASM_DOUBLE({
-        try {
-            var jsonString = UTF8ToString($0);
-            var parsed = JSON.parse(jsonString);
-            if (parsed.round && typeof parsed.round.time_left !== "undefined") {
-                return parsed.round.time_left;
-            }
-        }
-        catch (e) {
-            console.error("JSON parse failed:", e);
-        }
-        return -1.0;
-    }, json_string.c_str());
+    json json = json::parse(json_string);
+
+    double time_left = json["round"]["time_left"].get<double>();
 
     return time_left;
 }
 
 void Api::submit(Color* pixelBuffer) {
     std::string encodedData = encodeImageData(pixelBuffer);
-    std::string jsonPayload = "{\"player_id\":\"" + playerId + "\",\"content\":{\"drawing\":\"" + encodedData + "\"}}";
+    
+    json j = {
+        {"player_id", playerId},
+        {"content", {
+            {"drawing", encodedData}
+        }}
+    };
+
+    requestDataBuffer = j.dump();
 
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
@@ -135,14 +130,21 @@ void Api::submit(Color* pixelBuffer) {
     attr.onsuccess = Api::onSubmitSuccess;
     attr.onerror = Api::onErrorDefault;
 
-    attr.requestData = jsonPayload.c_str();
-    attr.requestDataSize = jsonPayload.size();
+    attr.requestData = requestDataBuffer.c_str();
+    attr.requestDataSize = requestDataBuffer.size();
 
     emscripten_fetch(&attr, "/submit");
 }
 
 void Api::submit(const std::string &text) {
-    std::string jsonPayload = "{\"player_id\":\"" + playerId + "\",\"content\":{\"text\":\"" + text + "\"}}";
+    json j = {
+        {"player_id", playerId},
+        {"content", {
+            {"text", text}
+        }}
+    };
+    
+    requestDataBuffer = j.dump();
 
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
@@ -153,14 +155,15 @@ void Api::submit(const std::string &text) {
     attr.onsuccess = Api::onSubmitSuccess;
     attr.onerror = Api::onErrorDefault;
 
-    attr.requestData = jsonPayload.c_str();
-    attr.requestDataSize = jsonPayload.size();
+    attr.requestData = requestDataBuffer.c_str();
+    attr.requestDataSize = requestDataBuffer.size();
 
     emscripten_fetch(&attr, "/submit");
 }
 
 void Api::onErrorDefault(emscripten_fetch_t *fetch) {
     printf("Fetch failed. HTTP status: %d\n", fetch->status);
+    printf("Error message: %s\n", fetch->data ? fetch->data : "No error message");
     emscripten_fetch_close(fetch);
 }
 
@@ -178,22 +181,16 @@ void Api::onJoinSuccess(emscripten_fetch_t *fetch) {
 
     emscripten_fetch_close(fetch);
 
-    EM_ASM({
-        try {
-            const json = JSON.parse(UTF8ToString($0));
-            if (json.player_id && json.game_id) {
-                stringToUTF8(json.game_id, $1, 64);
-                stringToUTF8(json.player_id, $1, 64);
-            } else {
-                console.error("player_id not found in JSON.");
-            }
-        } catch (e) {
-            console.error("Failed to parse JSON:", e);
-        }
-    }, self->json_string.c_str(), self->playerId.data());
+    json json = json::parse(self->json_string);
+    self->playerId = json["player_id"].get<std::string>();
+    self->gameId = json["game_id"].get<std::string>();
 
     val::global("localStorage").call<void>("setItem", std::string("playerId"), self->playerId);
     val::global("localStorage").call<void>("setItem", std::string("gameId"), self->gameId);
+
+    EM_ASM({
+        window.location.href = "/static/lobby.html";
+    });
 }
 
 void Api::onCreationSuccess(emscripten_fetch_t *fetch) {
@@ -203,24 +200,18 @@ void Api::onCreationSuccess(emscripten_fetch_t *fetch) {
 
     self->json_string = std::string((char*)fetch->data, fetch->numBytes);
 
+    printf("JSON string: %s\n", self->json_string.c_str());
+
     emscripten_fetch_close(fetch);
 
-    EM_ASM({
-        try {
-            const json = JSON.parse(UTF8ToString($0));
-            if (json.game_id && json.invite_code) {
-                stringToUTF8(json.game_id, $1, 64);
-                stringToUTF8(json.invite_code, $2, 64);
-            } else {
-                console.error("game_id or invite_code not found in JSON.");
-            }
-        } catch (e) {
-            console.error("Failed to parse JSON:", e);
-        }
-    }, self->json_string.c_str(), self->gameId.data(), self->playerId.data());
+    json json = json::parse(self->json_string);
+    self->inviteCode = json["invite_code"].get<std::string>();
+    self->gameId = json["game_id"].get<std::string>();
 
-    val::global("localStorage").call<void>("setItem", std::string("gameId"), self->gameId);
-    val::global("localStorage").call<void>("setItem", std::string("inviteCode"), self->inviteCode);
+    printf("Game ID: %s\n", self->gameId.c_str());
+    printf("Invite Code: %s\n", self->inviteCode.c_str());
+
+    self->join_game(self->inviteCode, "joe");
 }
 
 void Api::onGetStateSuccess(emscripten_fetch_t *fetch) {

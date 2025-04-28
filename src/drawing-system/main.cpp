@@ -32,6 +32,7 @@ Input<Color>* color_input = nullptr;
 Input<s32>* size_input = nullptr;
 Input<Shape>* shape_input = nullptr;
 Button *clear_button = nullptr;
+Button* submit_button = nullptr;
 Api* api = nullptr;
 
 std::vector<Switch*> switchList;
@@ -39,6 +40,8 @@ std::vector<Switch*> switchList;
 ButtonState l_mouse = UP;
 ButtonState r_mouse = UP;
 ButtonState m_mouse = UP;
+
+bool submit = false;
 
 void init() {
     SDL_version compiled;
@@ -56,11 +59,6 @@ void init() {
 		throw("SDL failed to initialise");
 	}
 
-    EM_ASM({ // Very temporary bs
-        localStorage.setItem("gameId", "12345");
-        localStorage.setItem("playerId", "67890");
-    });
-
     api = new Api();
     api->round_init(GameType::DRAWING);
 
@@ -72,6 +70,11 @@ void init() {
     shape_input = new Input<Shape>("shape-picker");
     clear_button = new Button("clear-button", []() {
         canvas->clear_canvas();
+    });
+
+    submit_button = new Button("submit-button", []() {
+        Color* pixelBuffer = canvas->get_pixel_buffer();
+        api->submit(pixelBuffer);
     });
 
     switchList.push_back(new Switch("pencil", switchList));
@@ -154,7 +157,7 @@ void main_loop() {
     tool_input();
 
     while (SDL_PollEvent(canvas->event)) {
-        input(canvas->event);
+        if (!submit) input(canvas->event);
     }
 
     if(!canvas->erasing) {
@@ -169,9 +172,9 @@ void main_loop() {
     canvas->brush.shape = brush_shape;
 
     canvas->get_mouse_pos();
-    canvas->draw();
+    if(!submit) canvas->draw();
 
-    canvas->check_update();
+    if(!submit) canvas->check_update();
 }
 
 int main() {
