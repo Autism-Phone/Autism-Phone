@@ -56,6 +56,10 @@ public:
 template <typename T>
 inline Input<T>::Input(std::string id) {
     inputBox = val::global("document").call<val>("getElementById", id);
+
+    if (inputBox.isNull() || inputBox.isUndefined()) {
+        std::cerr << "Input element with ID " << id << " not found." << std::endl;
+    };
 }
 
 template <typename T>

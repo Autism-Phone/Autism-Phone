@@ -1,4 +1,8 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.websockets import WebSocketState
+from collections import defaultdict
+from typing import Dict, List
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 import os
@@ -147,6 +151,8 @@ async def start_game(game_id: str):
             (game_id,)
         )
         conn.commit()
+
+        await manager.broadcast_to_game(game_id, "start_game")
         
         # 3. Weryfikacja zapisu
         cursor.execute("SELECT status FROM games WHERE id = %s", (game_id,))
@@ -163,6 +169,10 @@ async def start_game(game_id: str):
         cursor.close()
         conn.close()
 
+@app.post("/notify-game/{game_id}")
+async def notify_game(game_id: str, message: str):
+    await manager.broadcast_to_game(game_id, message)
+    return {"status": "success", "message": f"Message sent to game {game_id}"}
 
 async def game_loop(game_id: str):
     logger.info(f"Starting game loop for {game_id}")
@@ -412,3 +422,42 @@ def get_game_db_by_player(player_id: str):
             if not game_id:
                 raise HTTPException(404, "Player not found")
             return get_game_db(game_id[0])
+        
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, Dict[str, WebSocket]] = defaultdict(dict)
+
+    async def connect(self, websocket: WebSocket, game_id: str, player_id: str):
+        await websocket.accept()
+        self.active_connections[game_id][player_id] = websocket
+
+    def disconnect(self, game_id: str, player_id: str):
+        if game_id in self.active_connections and player_id in self.active_connections[game_id]:
+            del self.active_connections[game_id][player_id]
+            if not self.active_connections[game_id]:
+                del self.active_connections[game_id]
+
+    async def send_to_player(self, game_id: str, player_id: str, message: str):
+        if game_id in self.active_connections and player_id in self.active_connections[game_id]:
+            websocket = self.active_connections[game_id][player_id]
+            if websocket.client_state == WebSocketState.CONNECTED:
+                await websocket.send_text(message)
+
+    async def broadcast_to_game(self, game_id: str, message: str):
+        if game_id in self.active_connections:
+            for websocket in self.active_connections[game_id].values():
+                if websocket.client_state == WebSocketState.CONNECTED:
+                    await websocket.send_text(message)
+
+manager = ConnectionManager()
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str):
+    await manager.connect(websocket, game_id, player_id)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            logger.info(f"Received from player {player_id} in game {game_id}: {data}")
+    except WebSocketDisconnect:
+        manager.disconnect(game_id, player_id)
+        logger.info(f"Player {player_id} disconnected from game {game_id}")

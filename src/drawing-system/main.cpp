@@ -60,7 +60,7 @@ void init() {
 	}
 
     api = new Api();
-    api->round_init(GameType::DRAWING);
+    api->round_init();
 
     canvas = new Canvas(CANVAS_WIDTH, CANVAS_HEIGHT, background_color, "Drawing System");
     canvas->brush = Brush(brush_color, brush_size, brush_shape);

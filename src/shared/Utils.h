@@ -49,3 +49,11 @@ enum GameType {
     DRAWING,
     PROMPTING
 };
+
+enum StateTypes {
+    TIME,
+    STATUS,
+    ROUND_TYPE,
+    ROUND_NUMBER,
+    SUBMITTED
+};

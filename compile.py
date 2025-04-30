@@ -42,6 +42,7 @@ def compile(folder):
         "-s", "ALLOW_MEMORY_GROWTH=1",
         "-s", "USE_WEBGL2=1",
         "-s", "FETCH=1",
+        "-lwebsocket.js",
         "-lembind",
         "-I", os.path.join(os.getcwd(), "src/shared")
     ]

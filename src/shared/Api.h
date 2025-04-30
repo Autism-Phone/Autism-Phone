@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Compile.h"
+
 #include <string>
 #include <cstring>
 #include <sstream>
@@ -11,27 +13,32 @@
 #include <emscripten.h>
 #include <emscripten/val.h>
 #include <emscripten/fetch.h>
+#include <emscripten/websocket.h>
 
 class Api {
 public:
     Api();
+    ~Api();
+
+    std::string playerName;
 
     void create_game();
     void join_game(const std::string& inviteCode, const std::string& playerName);
     void start_game();
-    void round_init(GameType gameType);
+    void round_init();
     double fetch_time();
     void submit(Color* pixelBuffer);
     void submit(const std::string& text);
+    void connect_websocket();
 
 private:
     std::string gameId, playerId, inviteCode;
     std::string json_string;
-    std::string gameURL;
-    std::string playerName = "joe";
     GameType gameType;
 
     std::string requestDataBuffer;
+
+    StateTypes waddayawant;
 
     static void onErrorDefault(emscripten_fetch_t* fetch);
     static void onSuccessDefault(emscripten_fetch_t* fetch);
@@ -45,7 +52,9 @@ private:
 
     static void onSubmitSuccess(emscripten_fetch_t* fetch);
 
-    std::string encodeImageData(const Color* pixelBuffer);
+    static void onStartSuccess(emscripten_fetch_t* fetch);
 
-    std::string getCurrentURL();
+    void disconnectWebSocket();
+
+    std::string encodeImageData(const Color* pixelBuffer);
 };
