@@ -169,6 +169,7 @@ async def start_game(game_id: str):
         cursor.close()
         conn.close()
 
+
 @app.post("/notify-game/{game_id}")
 async def notify_game(game_id: str, message: str):
     await manager.broadcast_to_game(game_id, message)
@@ -211,6 +212,9 @@ async def game_loop(game_id: str):
         # Main rounds loop
         for round_number in range(1, total_rounds + 1):
             round_type = 'text' if round_number % 2 == 1 else 'drawing'
+
+            await manager.broadcast_to_game(game_id, f"next_round?{round_type}")
+
             duration = 10 if round_type == 'text' else 10
             
             # Create new round
@@ -242,6 +246,8 @@ async def game_loop(game_id: str):
         with main_conn.cursor() as cursor:
             cursor.execute("UPDATE games SET status = 'finished' WHERE id = %s", (game_id,))
             main_conn.commit()
+
+        await manager.broadcast_to_game(game_id, "end_game")
         
     except Exception as e:
         logger.error(f"Game loop error: {e}")

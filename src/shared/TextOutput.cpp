@@ -10,5 +10,5 @@ TextOutput::TextOutput(std::string id) : id(id) {
 
 void TextOutput::change_text(const std::string &newText) {
     text = newText;
-    textAreaContainer.set("value", text);
+    textAreaContainer.set("innerHTML", text);
 }

@@ -18,6 +18,21 @@ bool onWebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *we
         EM_ASM({
             window.location.href = "/static/writing-page.html";
         });
+    } else if (msg == "next_round?text") {
+        std::cout << "Next round started! Redirecting to game page..." << std::endl;
+        EM_ASM({
+            window.location.href = "/static/writing-page.html";
+        });
+    } else if (msg == "next_round?drawing") {
+        std::cout << "Next round started! Redirecting to game page..." << std::endl;
+        EM_ASM({
+            window.location.href = "/static/drawing-page.html";
+        });
+    } else if (msg == "end_game") {
+        std::cout << "Game over! Redirecting to lobby..." << std::endl;
+        EM_ASM({
+            window.location.href = "/static/home.html";
+        });
     } else {
         std::cout << "Received WebSocket message: {" << msg << '}' << std::endl;
     }
@@ -104,6 +119,8 @@ void Api::round_init() {
         std::cerr << "Game ID or Player ID not found in sessionStorage." << std::endl;
         return;
     }
+
+    connect_websocket();
 }
 
 double Api::fetch_time() {

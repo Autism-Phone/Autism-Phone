@@ -9,6 +9,7 @@
 #include "Button.h"
 #include "Switch.h"
 #include "Api.h"
+#include "TextOutput.h"
 
 #include <emscripten.h>
 #include <emscripten/stack.h>
@@ -34,6 +35,7 @@ Input<Shape>* shape_input = nullptr;
 Button *clear_button = nullptr;
 Button* submit_button = nullptr;
 Api* api = nullptr;
+TextOutput* prompt = nullptr;
 
 std::vector<Switch*> switchList;
 
@@ -76,6 +78,8 @@ void init() {
         Color* pixelBuffer = canvas->get_pixel_buffer();
         api->submit(pixelBuffer);
     });
+
+    prompt = new TextOutput("prompt");
 
     switchList.push_back(new Switch("pencil", switchList));
     switchList.push_back(new Switch("eraser", switchList));
