@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import json
 import logging
 import asyncio
+import random
 
 app = FastAPI(
     debug=True,
@@ -174,129 +175,6 @@ async def start_game(game_id: str):
 async def notify_game(game_id: str, message: str):
     await manager.broadcast_to_game(game_id, message)
     return {"status": "success", "message": f"Message sent to game {game_id}"}
-
-async def game_loop(game_id: str):
-    logger.info(f"Starting game loop for {game_id}")
-    game_conn = get_game_db(game_id)
-    
-    main_conn = mysql.connector.connect(
-        **DB_CONFIG,
-        autocommit=True
-    )
-    
-    try:
-        # Szybsze sprawdzanie co 300ms
-        while True:
-            with main_conn.cursor() as cursor:
-                cursor.execute(
-                    "SELECT status FROM games WHERE id = %s",
-                    (game_id,)
-                )
-                result = cursor.fetchone()
-                
-                if result and result[0] == 'in_progress':
-                    logger.info(f"Game {game_id} status confirmed!")
-                    break
-                    
-            await asyncio.sleep(0.3)
-        
-        
-        logger.info(f"Game {game_id} officially started!")
-        
-        # Reszta oryginalnej logiki
-        with game_conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM players")
-            total_rounds = cursor.fetchone()[0]
-
-        
-        # Main rounds loop
-        for round_number in range(1, total_rounds + 1):
-            round_type = 'text' if round_number % 2 == 1 else 'drawing'
-
-            await manager.broadcast_to_game(game_id, f"next_round?{round_type}")
-
-            duration = 10 if round_type == 'text' else 10
-            
-            # Create new round
-            round_id = str(uuid.uuid4())
-            start_time = datetime.now()
-            end_time = start_time + timedelta(seconds=duration)
-            
-            with game_conn.cursor() as cursor:
-                cursor.execute("""
-                    INSERT INTO rounds 
-                    (id, number, type, start_time, end_time)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (round_id, round_number, round_type, start_time, end_time))
-                game_conn.commit()
-            
-            logger.info(f"Started round {round_number} ({round_type}) for game {game_id}")
-            
-            # Wait for round duration
-            await asyncio.sleep(duration)
-            #await asyncio.sleep(5)
-            with game_conn.cursor() as cursor:
-                        # W game_loop po await asyncio.sleep(duration):
-                cursor.execute("SELECT COUNT(*) FROM submissions WHERE round_id = %s", (round_id,))
-                submissions_count = cursor.fetchone()[0]
-                if submissions_count < total_rounds:
-                    logger.warning(f"Not all players submitted in round {round_number}")
-        
-        # Finalize game
-        with main_conn.cursor() as cursor:
-            cursor.execute("UPDATE games SET status = 'finished' WHERE id = %s", (game_id,))
-            main_conn.commit()
-
-        await manager.broadcast_to_game(game_id, "end_game")
-        
-    except Exception as e:
-        logger.error(f"Game loop error: {e}")
-    finally:
-        game_conn.close()
-        main_conn.close()
-
-@app.post("/join-game")
-async def join_game(request: PlayerJoin):
-    main_conn = mysql.connector.connect(**DB_CONFIG)
-    main_cursor = main_conn.cursor(dictionary=True)
-    
-    try:
-        main_cursor.execute("SELECT * FROM games WHERE invite_code = %s AND status = 'waiting'", (request.invite_code,))
-        game = main_cursor.fetchone()
-        print("game", game)
-        if not game:
-            raise HTTPException(404, "Game not found")
-        
-        game_conn = get_game_db(game['id'])
-        with game_conn.cursor() as game_cursor:
-            game_cursor.execute("SELECT COUNT(*) FROM players WHERE name = %s", (request.name,))
-            if game_cursor.fetchone()[0] > 0:
-                raise HTTPException(400, "Player name already exists")
-            
-            player_id = str(uuid.uuid4())
-            main_cursor.execute("INSERT INTO game_players (game_id, player_id) VALUES (%s, %s)", (game['id'], player_id))
-            game_cursor.execute("INSERT INTO players (id, name) VALUES (%s, %s)", (player_id, request.name))
-            
-            main_conn.commit()
-            game_conn.commit()
-            game_cursor.execute("SELECT COUNT(*) FROM players")
-            res=game_cursor.fetchone()
-            print("po dodaniu",res)
-            game_cursor.close()
-            main_cursor.close()
-            game_conn.close()
-            main_conn.close()
-            return {"player_id": player_id, "game_id": game['id']}
-            
-    except mysql.connector.Error as err:
-        logger.error(f"Database error: {err}")
-        raise HTTPException(500, "Database operation failed")
-    finally:
-        main_cursor.close()
-        main_conn.close()
-        if 'game_conn' in locals():
-            game_conn.close()
-
 @app.get("/game-state/{game_id}")
 async def get_game_state(game_id: str, player_id: str):
     try:
@@ -363,6 +241,49 @@ async def get_game_state(game_id: str, player_id: str):
                 time_left = (current_round['end_time'] - datetime.now()).total_seconds()
                 time_left = max(0, round(time_left, 1))
 
+                # 3f. Pobierz prompt dla aktualnej rundy
+                prompt = None
+                if current_round['number'] > 1:
+                    prev_round_number = current_round['number'] - 1
+                    
+                    # Pobierz kolejność przypisania
+                    game_cursor.execute("""
+                        SELECT assignment_order FROM players 
+                        WHERE id = %s
+                    """, (player_id,))
+                    assignment_result = game_cursor.fetchone()
+                    
+                    if assignment_result and assignment_result['assignment_order']:
+                        try:
+                            assignment_order = json.loads(assignment_result['assignment_order'])
+                        except json.JSONDecodeError:
+                            logger.error("Invalid assignment_order format")
+                            assignment_order = []
+                        
+                        # Oblicz indeks w kolejności przypisania
+                        idx = current_round['number'] - 2
+                        if idx < len(assignment_order):
+                            assigned_player_id = assignment_order[idx]
+                            
+                            # Pobierz odpowiednie zgłoszenie
+                            game_cursor.execute("""
+                                SELECT s.content 
+                                FROM submissions s
+                                JOIN rounds r ON s.round_id = r.id 
+                                WHERE r.number = %s 
+                                AND s.player_id = %s
+                            """, (prev_round_number, assigned_player_id))
+                            
+                            submission = game_cursor.fetchone()
+                            if submission:
+                                prev_round_type = 'drawing' if current_round['type'] == 'text' else 'text'
+                                try:
+                                    content = json.loads(submission['content'])
+                                    prompt = content.get(prev_round_type)
+                                except (json.JSONDecodeError, KeyError) as e:
+                                    logger.error(f"Error parsing submission content: {e}")
+                                    prompt = None
+
                 return {
                     "status": "in_progress",
                     "round": {
@@ -370,7 +291,8 @@ async def get_game_state(game_id: str, player_id: str):
                         "type": current_round['type'],
                         "time_left": time_left
                     },
-                    "submitted": submitted
+                    "submitted": submitted,
+                    "prompt": prompt
                 }
 
     except HTTPException as he:
@@ -381,6 +303,126 @@ async def get_game_state(game_id: str, player_id: str):
     except Exception as e:
         logger.error(f"Game state error: {e}")
         raise HTTPException(500, "Could not retrieve game state")
+
+async def game_loop(game_id: str):
+    logger.info(f"Starting game loop for {game_id}")
+    game_conn = get_game_db(game_id)
+    
+    main_conn = mysql.connector.connect(**DB_CONFIG, autocommit=True)
+    
+    try:
+        while True:
+            with main_conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT status FROM games WHERE id = %s",
+                    (game_id,)
+                )
+                result = cursor.fetchone()
+                if result and result[0] == 'in_progress':
+                    break
+            await asyncio.sleep(0.3)
+
+        # Generuj losowe przypisania
+        with game_conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM players")
+            players = [row[0] for row in cursor.fetchall()]
+            
+            for player_id in players:
+                other_players = [p for p in players if p != player_id]
+                random.shuffle(other_players)
+                assignment_order = json.dumps(other_players)
+                
+                cursor.execute("""
+                    UPDATE players 
+                    SET assignment_order = %s 
+                    WHERE id = %s
+                """, (assignment_order, player_id))
+            game_conn.commit()
+
+        with game_conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM players")
+            total_rounds = cursor.fetchone()[0]
+
+        for round_number in range(1, total_rounds + 1):
+            round_type = 'text' if round_number % 2 == 1 else 'drawing'
+            duration = 20 if round_type == 'text' else 40
+
+            await manager.broadcast_to_game(game_id, f"next_round?{round_type}")
+
+            round_id = str(uuid.uuid4())
+            start_time = datetime.now()
+            end_time = start_time + timedelta(seconds=duration)
+            
+            with game_conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO rounds 
+                    (id, number, type, start_time, end_time)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (round_id, round_number, round_type, start_time, end_time))
+                game_conn.commit()
+
+            logger.info(f"Started round {round_number} ({round_type}) for game {game_id}")
+            await asyncio.sleep(duration)
+
+            with game_conn.cursor() as cursor:
+                cursor.execute("SELECT COUNT(*) FROM submissions WHERE round_id = %s", (round_id,))
+                submissions_count = cursor.fetchone()[0]
+                if submissions_count < total_rounds:
+                    logger.warning(f"Not all players submitted in round {round_number}")
+
+        with main_conn.cursor() as cursor:
+            cursor.execute("UPDATE games SET status = 'finished' WHERE id = %s", (game_id,))
+
+        await manager.broadcast_to_game(game_id, "end_game")
+        
+    except Exception as e:
+        logger.error(f"Game loop error: {e}")
+    finally:
+        game_conn.close()
+        main_conn.close()
+
+@app.post("/join-game")
+async def join_game(request: PlayerJoin):
+    main_conn = mysql.connector.connect(**DB_CONFIG)
+    main_cursor = main_conn.cursor(dictionary=True)
+    
+    try:
+        main_cursor.execute("SELECT * FROM games WHERE invite_code = %s AND status = 'waiting'", (request.invite_code,))
+        game = main_cursor.fetchone()
+        print("game", game)
+        if not game:
+            raise HTTPException(404, "Game not found")
+        
+        game_conn = get_game_db(game['id'])
+        with game_conn.cursor() as game_cursor:
+            game_cursor.execute("SELECT COUNT(*) FROM players WHERE name = %s", (request.name,))
+            if game_cursor.fetchone()[0] > 0:
+                raise HTTPException(400, "Player name already exists")
+            
+            player_id = str(uuid.uuid4())
+            main_cursor.execute("INSERT INTO game_players (game_id, player_id) VALUES (%s, %s)", (game['id'], player_id))
+            game_cursor.execute("INSERT INTO players (id, name) VALUES (%s, %s)", (player_id, request.name))
+            
+            main_conn.commit()
+            game_conn.commit()
+            game_cursor.execute("SELECT COUNT(*) FROM players")
+            res=game_cursor.fetchone()
+            print("po dodaniu",res)
+            game_cursor.close()
+            main_cursor.close()
+            game_conn.close()
+            main_conn.close()
+            return {"player_id": player_id, "game_id": game['id']}
+            
+    except mysql.connector.Error as err:
+        logger.error(f"Database error: {err}")
+        raise HTTPException(500, "Database operation failed")
+    finally:
+        main_cursor.close()
+        main_conn.close()
+        if 'game_conn' in locals():
+            game_conn.close()
+
     
 
 @app.post("/submit")
