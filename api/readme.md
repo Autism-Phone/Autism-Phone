@@ -1,13 +1,23 @@
+# Autism Phone API Documentation
 
-# Gra "Autism Phone" API Documentation
+## Table of Contents
+1. [Database Setup](#database-setup)
+2. [API Endpoints](#api-endpoints)
+3. [Game Flow](#game-flow)
+4. [Data Structures](#data-structures)
+5. [Security Features](#security-features)
+6. [Error Codes](#error-codes)
+7. [Examples](#examples)
+8. [Frontend Implementation](#frontend-implementation)
 
-### Tworzenie bazy danych
+## Database Setup
 ```sql
-create user 'autism'@localhost identified by 'h4s10';
+-- Create user and privileges
+CREATE USER 'autism'@'localhost' IDENTIFIED BY 'h4s10';
+GRANT ALL PRIVILEGES ON *.* TO 'autism'@'localhost';
 
-GRANT ALL PRIVILEGES ON *.* TO 'autism'@localhost IDENTIFIED BY 'h4s10';
+-- Main database setup
 CREATE DATABASE IF NOT EXISTS game_sessions;
-
 USE game_sessions;
 
 CREATE TABLE games (
@@ -17,6 +27,7 @@ CREATE TABLE games (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     max_players INT DEFAULT 10
 );
+
 CREATE TABLE game_players (
     game_id VARCHAR(36) NOT NULL,
     player_id VARCHAR(36) NOT NULL,
@@ -24,18 +35,14 @@ CREATE TABLE game_players (
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
 );
 ```
-### 0. Uruchomienie API
-```bash
-uvicorn main:app --port 2137 --host 0.0.0.0
-```
 
-### 1. Tworzenie nowej gry
-**Request:**
+## API Endpoints
+
+### 1. Create Game
 ```http
 POST /create-game
 ```
-
-**Response (success):**
+**Response:**
 ```json
 {
   "game_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -43,8 +50,7 @@ POST /create-game
 }
 ```
 
-### 2. Dołączanie do gry
-**Request:**
+### 2. Join Game
 ```http
 POST /join-game
 {
@@ -52,8 +58,7 @@ POST /join-game
   "name": "Player1"
 }
 ```
-
-**Response (success):**
+**Response:**
 ```json
 {
   "player_id": "d9b6f1f0-ae3a-4b0c-9c4a-5a5d5f5e5d5c",
@@ -61,98 +66,42 @@ POST /join-game
 }
 ```
 
-**Możliwe błędy:**
-- 404 Game not found
-- 400 Player name already exists
-- 500 Database error
+### 3. Start Game
+```http
+POST /start-game/{game_id}
+```
 
-### 3. Sprawdzanie stanu gry
-**Request:**
+### 4. Get Game State
 ```http
 GET /game-state/{game_id}?player_id={player_id}
 ```
 
-**Przykładowe odpowiedzi:**
-
-a) Gra nie rozpoczęta:
-```json
-{
-  "status": "waiting"
-}
-```
-
-b) Gra w trakcie:
-```json
-{
-  "status": "in_progress",
-  "round": {
-    "number": 2,
-    "type": "drawing",
-    "time_left": 35.7
-  },
-  "submitted": false
-}
-```
-
-c) Gra zakończona:
-```json
-{
-  "status": "finished",
-  "message": "Game has ended"
-}
-```
-
-### 4. Wysyłanie odpowiedzi
-**Request:**
+### 5. Submit Answer
 ```http
 POST /submit
 {
   "player_id": "d9b6f1f0-ae3a-4b0c-9c4a-5a5d5f5e5d5c",
   "content": {
-    "text": "latający słoń"
+    "text": "sample text",
+    "drawing": [[255,255,255], [0,0,0], ...]
   }
 }
 ```
 
-**Formaty content:**
-- Dla rundy tekstowej:
-  ```json
-  {"text": "dowolny ciąg znaków"}
-  ```
-- Dla rundy rysunkowej:
-  ```json
-  {"drawing": [[255,255,255], [0,0,0], ...]}  # 800 000 elementów RGB
-  ```
+## Game Flow
+1. **Initialization**: Host creates game → gets game_id and invite_code
+2. **Joining**: Players join with invite code and unique name
+3. **Rounds**:
+   - Alternate between text (20s) and drawing (40s) rounds
+   - Number of rounds = number of players
+4. **Prompts**:
+   - Text rounds: Receive previous drawing as RGB array
+   - Drawing rounds: Receive previous text description
+5. **Completion**: Show transformation chain, automatic cleanup
 
-**Response (success):**
-```json
-{"status": "success"}
-```
+## Data Structures
 
-## Przebieg gry
-
-1. **Inicjalizacja:**
-   - Host tworzy grę i otrzymuje kod zaproszenia
-   - Gracze dołączają podając kod i unikalną nazwę
-
-2. **Rozgrywka:**
-   - Automatyczny start przy min. 2 graczach
-   - Rund na przemian tekstowe i rysunkowe
-   - Czas na turę: 20s dla tekstu, 40s dla rysunku
-   - Liczba rund = liczba graczy
-
-3. **Mechanika:**
-   - Każdy gracz otrzymuje wyniki poprzedniej rundy
-   - Losowe przydzielanie zadań między graczami
-   - Automatyczna detekcja nieaktywnych graczy
-
-4. **Zakończenie:**
-   - Pokazanie pełnego łańcucha skojarzeń
-   - Automatyczne czyszczenie danych gry
-
-## Struktury danych
-
-### Runda:
+### Round Object
 ```typescript
 interface Round {
   number: number;
@@ -161,20 +110,71 @@ interface Round {
 }
 ```
 
-### Historia gry:
-```typescript
-interface GameHistory {
-  author: string;
-  round_number: number;
-  round_type: 'text' | 'drawing';
-  content: object;
+### Game State Responses
+**Waiting State:**
+```json
+{
+  "status": "waiting"
 }
 ```
 
-## Bezpieczeństwo
-- Wszystkie ID w formacie UUIDv4
-- Parametryzowane zapytania SQL
-- Każda gra w osobnej bazie danych
-- Autentykacja przez player_id i game_id
-- Walidacja danych wejściowych przez Pydantic
+**Text Round with Image Prompt:**
+```json
+{
+  "status": "in_progress",
+  "round": {
+    "number": 3,
+    "type": "text",
+    "time_left": 17.3
+  },
+  "submitted": false,
+  "prompt": [
+    [255,255,255], [243,214,178], 
+    [0,0,0], ..., [127,127,127]
+  ]
+}
+```
+
+**Drawing Round with Text Prompt:**
+```json
+{
+  "status": "in_progress",
+  "round": {
+    "number": 2,
+    "type": "drawing",
+    "time_left": 35.7
+  },
+  "submitted": false,
+  "prompt": "A magical forest at twilight"
+}
+```
+
+**Completed Game:**
+```json
+{
+  "status": "finished",
+  "message": "Game has ended"
+}
+```
+
+## Security Features
+- 🔒 UUIDv4 authentication
+- 🛡️ Parameterized SQL queries
+- 🗄️ Isolated game databases
+- 🔄 Automatic database cleanup
+- 📏 Strict input validation:
+  - Text: 500 character limit
+  - Drawing: 800,000 RGB values
+
+## Error Codes
+| Code | Error Message                 | Description                     |
+|------|-------------------------------|---------------------------------|
+| 400  | Invalid content format        | Malformed JSON                 |
+| 401  | Invalid player/game ID        | UUID verification failed       |
+| 403  | Submission too late           | Round timer expired            |
+| 404  | Game not found                | Invalid game_id                |
+| 409  | Name already exists           | Duplicate player name          |
+| 413  | Content too large             | Exceeds size limits            |
+| 422  | Invalid drawing format        | Array dimension mismatch       |
+| 500  | Database operation failed     | Connection/query issues        |
 
