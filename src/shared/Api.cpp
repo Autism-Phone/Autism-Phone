@@ -123,15 +123,6 @@ void Api::round_init() {
     connect_websocket();
 }
 
-double Api::fetch_time() {
-    fetchGameState();
-    json json = json::parse(json_string);
-
-    double time_left = json["round"]["time_left"].get<double>();
-
-    return time_left;
-}
-
 void Api::submit(Color* pixelBuffer) {
     std::string encodedData = encodeImageData(pixelBuffer);
     
@@ -303,6 +294,53 @@ void Api::connect_websocket() {
 
     emscripten_websocket_set_onmessage_callback(websocket, this, onWebSocketMessage);
     std::cout << "WebSocket connected to server with game_id: " << gameId << " and player_id: " << playerId << std::endl;
+}
+
+void Api::get_prompt(std::function<void(std::string)> callback) {
+    std::cout << "Fetching prompt..." << std::endl;
+
+    emscripten_fetch_attr_t attr;
+    emscripten_fetch_attr_init(&attr);
+
+    strcpy(attr.requestMethod, "GET");
+    attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+
+    attr.onsuccess = [](emscripten_fetch_t *fetch) {
+        std::cout << "Fetch succeeded! HTTP status: " << fetch->status << std::endl;
+        Api* self = static_cast<Api*>(fetch->userData);
+
+        std::string response((char*)fetch->data, fetch->numBytes);
+        emscripten_fetch_close(fetch);
+
+        try {
+            nlohmann::json jsonResponse = nlohmann::json::parse(response);
+            std::string prompt = jsonResponse["prompt"].get<std::string>();
+            self->storedCallback(prompt);
+        } catch (const std::exception& e) {
+            std::cerr << "Error parsing JSON: " << e.what() << std::endl;
+            self->storedCallback("");
+        }
+    };
+
+    attr.onerror = [](emscripten_fetch_t *fetch) {
+        std::cerr << "Fetch failed. HTTP status: " << fetch->status << std::endl;
+        emscripten_fetch_close(fetch);
+
+        Api* self = static_cast<Api*>(fetch->userData);
+        self->storedCallback("");
+    };
+
+    std::string url = "/game-state/" + gameId + "?player_id=" + playerId;
+    std::cout << "Fetching game state from: " << url << std::endl;
+
+    storedCallback = callback;
+    attr.userData = this;
+    emscripten_fetch(&attr, url.c_str());
+}
+
+
+Color *Api::get_drawing() {
+    
 }
 
 void Api::disconnectWebSocket() {

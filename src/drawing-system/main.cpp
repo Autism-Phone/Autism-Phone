@@ -79,7 +79,11 @@ void init() {
         api->submit(pixelBuffer);
     });
 
-    prompt = new TextOutput("prompt");
+    prompt = new TextOutput("prompt-box");
+
+    api->get_prompt([&](std::string text) {
+        prompt->change_text(text);
+    });
 
     switchList.push_back(new Switch("pencil", switchList));
     switchList.push_back(new Switch("eraser", switchList));

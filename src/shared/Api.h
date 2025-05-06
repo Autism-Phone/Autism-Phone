@@ -26,15 +26,19 @@ public:
     void join_game(const std::string& inviteCode, const std::string& playerName);
     void start_game();
     void round_init();
-    double fetch_time();
     void submit(Color* pixelBuffer);
     void submit(const std::string& text);
     void connect_websocket();
+
+    void get_prompt(std::function<void(std::string)> callback);
+    Color* get_drawing();
 
 private:
     std::string gameId, playerId, inviteCode;
     std::string json_string;
     GameType gameType;
+
+    std::function<void(std::string)> storedCallback;
 
     std::string requestDataBuffer;
 
