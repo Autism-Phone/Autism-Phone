@@ -304,6 +304,13 @@ async def get_game_state(game_id: str, player_id: str):
         logger.error(f"Game state error: {e}")
         raise HTTPException(500, "Could not retrieve game state")
 
+def generate_derangement(players):
+    while True:
+        deranged = players[:]
+        random.shuffle(deranged)
+        if all(p != d for p, d in zip(players, deranged)):
+            return deranged
+
 async def game_loop(game_id: str):
     logger.info(f"Starting game loop for {game_id}")
     game_conn = get_game_db(game_id)
@@ -322,21 +329,20 @@ async def game_loop(game_id: str):
                     break
             await asyncio.sleep(0.3)
 
-        # Generuj losowe przypisania
         with game_conn.cursor() as cursor:
             cursor.execute("SELECT id FROM players")
             players = [row[0] for row in cursor.fetchall()]
-            
-            for player_id in players:
-                other_players = [p for p in players if p != player_id]
-                random.shuffle(other_players)
-                assignment_order = json.dumps(other_players)
-                
+
+            assignments = generate_derangement(players)
+
+            for player_id, assigned_id in zip(players, assignments):
+                assignment_order = json.dumps([assigned_id])  # Jeśli jedno przypisanie
                 cursor.execute("""
                     UPDATE players 
                     SET assignment_order = %s 
                     WHERE id = %s
                 """, (assignment_order, player_id))
+            
             game_conn.commit()
 
         with game_conn.cursor() as cursor:
