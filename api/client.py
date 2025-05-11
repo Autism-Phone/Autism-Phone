@@ -14,6 +14,7 @@ class PlayerClient:
         self.invite_code = invite_code
         self.player_id = None
         self.submission_history = {}
+        self.prompts_received = {}
         
     def join_game(self):
         response = requests.post(
@@ -35,6 +36,8 @@ class PlayerClient:
         
         print(f"\n{self.name} starting round {round_num} ({round_type})")
         print(f"Prompt: {prompt[:50] if prompt else 'First round - no prompt'}")
+        self.prompts_received[round_num] = prompt
+
 
         # Generuj odpowiedź na podstawie typu rundy
         if round_type == "text":
@@ -119,6 +122,27 @@ def test_full_game():
     # Czekaj na zakończenie gry
     for t in threads:
         t.join()
+
+    # Porównanie promptów między graczami
+    print("\nComparing prompts for uniqueness...")
+
+    rounds_to_check = set()
+    for p in players:
+        rounds_to_check.update(p.prompts_received.keys())
+
+    for rnd in sorted(rounds_to_check):
+        prompts = [p.prompts_received.get(rnd, None) for p in players]
+        unique_prompts = set(prompts)
+        print(f"Round {rnd}:")
+        for i, prompt in enumerate(prompts):
+            print(f"  {players[i].name} prompt: {repr(prompt)[:50]}")
+
+        non_none_prompts = [p for p in prompts if p is not None]
+        if len(set(non_none_prompts)) == len(non_none_prompts):
+            print("  ✅ All prompts are unique or None.\n")
+        else:
+            print("  ❌ Duplicate prompts found!\n")
+
 
     # Pokaż wyniki
     print("\nFinal results:")

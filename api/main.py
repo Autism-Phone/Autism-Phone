@@ -175,6 +175,7 @@ async def start_game(game_id: str):
 async def notify_game(game_id: str, message: str):
     await manager.broadcast_to_game(game_id, message)
     return {"status": "success", "message": f"Message sent to game {game_id}"}
+
 @app.get("/game-state/{game_id}")
 async def get_game_state(game_id: str, player_id: str):
     try:
@@ -351,7 +352,7 @@ async def game_loop(game_id: str):
 
         for round_number in range(1, total_rounds + 1):
             round_type = 'text' if round_number % 2 == 1 else 'drawing'
-            duration = 20 if round_type == 'text' else 40
+            duration = 2 if round_type == 'text' else 4
 
             await manager.broadcast_to_game(game_id, f"next_round?{round_type}")
 
@@ -429,7 +430,6 @@ async def join_game(request: PlayerJoin):
         if 'game_conn' in locals():
             game_conn.close()
 
-    
 
 @app.post("/submit")
 async def submit(submission: Submission):
