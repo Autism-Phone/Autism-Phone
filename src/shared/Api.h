@@ -31,7 +31,7 @@ public:
     void connect_websocket();
 
     void get_prompt(std::function<void(std::string)> callback);
-    Color* get_drawing();
+    void get_drawing(std::function<void(std::string)> callback);
 
 private:
     std::string gameId, playerId, inviteCode;

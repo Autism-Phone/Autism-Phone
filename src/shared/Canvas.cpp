@@ -107,6 +107,14 @@ void Canvas::draw() {
     }
 }
 
+void Canvas::draw(Color *newImage) {
+    for (int i = 0; i < width * height; i++) {
+        pixelBuffer[i] = newImage[i];
+    }
+
+    render_frame();
+}
+
 void Canvas::check_update() {
     double current_time = SDL_GetTicks();
     double delta_time = current_time - last_time;

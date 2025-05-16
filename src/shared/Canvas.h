@@ -34,6 +34,7 @@ public:
     void render_frame();
     void get_mouse_pos();
     void draw();
+    void draw(Color* newImage);
     void check_update();
     void clear_canvas();
 

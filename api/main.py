@@ -352,7 +352,7 @@ async def game_loop(game_id: str):
 
         for round_number in range(1, total_rounds + 1):
             round_type = 'text' if round_number % 2 == 1 else 'drawing'
-            duration = 2 if round_type == 'text' else 4
+            duration = 10 if round_type == 'text' else 20
 
             await manager.broadcast_to_game(game_id, f"next_round?{round_type}")
 

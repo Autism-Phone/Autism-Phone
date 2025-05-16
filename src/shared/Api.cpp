@@ -239,8 +239,6 @@ void Api::onGetStateSuccess(emscripten_fetch_t *fetch) {
 
     json json = json::parse(self->json_string);
 
-    
-
     emscripten_fetch_close(fetch);
 }
 
@@ -297,8 +295,40 @@ void Api::connect_websocket() {
 }
 
 void Api::get_prompt(std::function<void(std::string)> callback) {
-    std::cout << "Fetching prompt..." << std::endl;
+    emscripten_fetch_attr_t attr;
+    emscripten_fetch_attr_init(&attr);
 
+    strcpy(attr.requestMethod, "GET");
+    attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+
+    attr.onsuccess = [](emscripten_fetch_t *fetch) {
+        std::cout << "Fetch succeeded! HTTP status: " << fetch->status << std::endl;
+        Api* self = static_cast<Api*>(fetch->userData);
+
+        std::string response((char*)fetch->data, fetch->numBytes);
+        emscripten_fetch_close(fetch);
+
+        self->storedCallback(response);
+    };
+
+    attr.onerror = [](emscripten_fetch_t *fetch) {
+        std::cerr << "Fetch failed. HTTP status: " << fetch->status << std::endl;
+        emscripten_fetch_close(fetch);
+
+        Api* self = static_cast<Api*>(fetch->userData);
+        self->storedCallback("");
+    };
+
+    std::string url = "/game-state/" + gameId + "?player_id=" + playerId;
+    std::cout << "Fetching game state from: " << url << std::endl;
+
+    storedCallback = callback;
+    attr.userData = this;
+    emscripten_fetch(&attr, url.c_str());
+}
+
+
+void Api::get_drawing(std::function<void(std::string)> callback) {
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
 
@@ -336,11 +366,6 @@ void Api::get_prompt(std::function<void(std::string)> callback) {
     storedCallback = callback;
     attr.userData = this;
     emscripten_fetch(&attr, url.c_str());
-}
-
-
-Color *Api::get_drawing() {
-    
 }
 
 void Api::disconnectWebSocket() {
