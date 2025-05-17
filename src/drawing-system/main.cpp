@@ -11,10 +11,14 @@
 #include "Api.h"
 #include "TextOutput.h"
 
+#include "json.hpp"
+
 #include <emscripten.h>
 #include <emscripten/stack.h>
 
 #include <SDL2/SDL.h>
+
+using json = nlohmann::json;
 
 const int CANVAS_WIDTH = 1000;
 const int CANVAS_HEIGHT = 600;
@@ -80,6 +84,7 @@ void init() {
     });
 
     prompt = new TextOutput("prompt-box");
+
 
     api->get_prompt([&](std::string text) {
         prompt->change_text(text);

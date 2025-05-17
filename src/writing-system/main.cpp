@@ -18,6 +18,7 @@ Canvas* canvas = nullptr;
 
 Color* pixelBuffer = nullptr;
 
+using json = nlohmann::json;
 
 int main () {
     api = new Api();
@@ -40,26 +41,39 @@ int main () {
 
     int round_number = 0;
 
-    nlohmann::json jsonResponse;
+    std::string stringResponse;
 
     api->get_drawing([&](std::string response) {
-        jsonResponse = nlohmann::json::parse(response);
+        stringResponse = response;
     });
 
-    round_number = jsonResponse["round"]["number"].get<int>();
+    try {
+        json jsonResponse = json::parse(stringResponse);
+        std::cout << "Parsed JSON: " << jsonResponse.dump(4) << std::endl;
 
-    if (round_number > 1) {
-        pixelBuffer = (Color*)malloc(800 * 600 * sizeof(Color));
-        std::string encodedData = jsonResponse["prompt"].get<std::string>();
+        std::string prompt = jsonResponse["prompt"].get<std::string>();
 
-        std::string decodedData = base64_decode(encodedData);
+        round_number = jsonResponse["round"]["number"].get<int>();
 
-        pixelBuffer = reinterpret_cast<Color*>(decodedData.data());
+        if (round_number > 1) {
+            pixelBuffer = (Color*)malloc(800 * 600 * sizeof(Color));
+            std::string encodedData = jsonResponse["prompt"].get<std::string>();
 
-        canvas = new Canvas(800, 600, Color{255, 255, 255}, "canvas");
-        canvas->draw(pixelBuffer);
+            std::string decodedData = base64_decode(encodedData);
+            std::cout << "Decoded data size: " << decodedData.size() << std::endl;
+            std::cout << "Decoded data: " << decodedData << std::endl;
 
-        free(pixelBuffer);
+            pixelBuffer = reinterpret_cast<Color*>(decodedData.data());
+
+            canvas = new Canvas(800, 600, Color{255, 255, 255}, "canvas");
+            canvas->draw(pixelBuffer);
+
+            free(pixelBuffer);
+        }
+
+    } catch (json::parse_error& e) {
+        std::cerr << "JSON parse error: " << e.what() << std::endl;
+        return 1;
     }
 
     return 0;

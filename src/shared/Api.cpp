@@ -308,7 +308,14 @@ void Api::get_prompt(std::function<void(std::string)> callback) {
         std::string response((char*)fetch->data, fetch->numBytes);
         emscripten_fetch_close(fetch);
 
-        self->storedCallback(response);
+        try {
+            nlohmann::json jsonResponse = nlohmann::json::parse(response);
+            std::string prompt = jsonResponse["prompt"].get<std::string>();
+            self->storedCallback(prompt);
+        } catch (const std::exception& e) {
+            std::cerr << "Error parsing JSON: " << e.what() << std::endl;
+            self->storedCallback("");
+        }
     };
 
     attr.onerror = [](emscripten_fetch_t *fetch) {
@@ -342,14 +349,7 @@ void Api::get_drawing(std::function<void(std::string)> callback) {
         std::string response((char*)fetch->data, fetch->numBytes);
         emscripten_fetch_close(fetch);
 
-        try {
-            nlohmann::json jsonResponse = nlohmann::json::parse(response);
-            std::string prompt = jsonResponse["prompt"].get<std::string>();
-            self->storedCallback(prompt);
-        } catch (const std::exception& e) {
-            std::cerr << "Error parsing JSON: " << e.what() << std::endl;
-            self->storedCallback("");
-        }
+        self->storedCallback(response);
     };
 
     attr.onerror = [](emscripten_fetch_t *fetch) {
