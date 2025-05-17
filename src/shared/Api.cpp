@@ -125,6 +125,8 @@ void Api::round_init() {
 
 void Api::submit(Color* pixelBuffer) {
     std::string encodedData = encodeImageData(pixelBuffer);
+
+    std::cout << "Data to send: " << encodedData << std::endl;
     
     json j = {
         {"player_id", playerId},

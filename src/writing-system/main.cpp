@@ -63,9 +63,26 @@ int main () {
             std::cout << "Decoded data size: " << decodedData.size() << std::endl;
             std::cout << "Decoded data: " << decodedData << std::endl;
 
-            pixelBuffer = reinterpret_cast<Color*>(decodedData.data());
+            for (int i = 0; i < decodedData.size(); i++) {
+                pixelBuffer = reinterpret_cast<Color*>(decodedData[i]);
+            }
 
-            canvas = new Canvas(800, 600, Color{255, 255, 255}, "canvas");
+            SDL_version compiled;
+            SDL_version linked;
+
+            SDL_VERSION(&compiled);
+            SDL_GetVersion(&linked);
+
+            printf("Compiled against SDL %d.%d.%d\n", 
+                compiled.major, compiled.minor, compiled.patch);
+            printf("Linked against SDL %d.%d.%d\n", 
+                linked.major, linked.minor, linked.patch);
+
+            if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+                throw("SDL failed to initialise");
+	        }
+
+            canvas = new Canvas(1000, 600, Color{255, 255, 255}, "canvas");
             canvas->draw(pixelBuffer);
 
             free(pixelBuffer);
