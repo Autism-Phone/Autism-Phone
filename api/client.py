@@ -43,7 +43,7 @@ class PlayerClient:
         if round_type == "text":
             content = {"text": f"{self.name}'s answer to: {prompt}"}
         else:
-            content = {"drawing": [[random.randint(0,255) for _ in range(3)] for _ in range(10)]}  # Uproszczony rysunek
+            content = {"drawing": "amogus"}  # Uproszczony rysunek
 
         # Wyślij odpowiedź
         response = requests.post(
@@ -100,7 +100,7 @@ def test_full_game():
     players = [
         PlayerClient("Alice", invite_code=host.invite_code),
         PlayerClient("Bob", invite_code=host.invite_code),
-        PlayerClient("Charlie", invite_code=host.invite_code)
+        PlayerClient("Charlie", invite_code=host.invite_code),
     ]
     
     for p in players:
@@ -135,7 +135,7 @@ def test_full_game():
         unique_prompts = set(prompts)
         print(f"Round {rnd}:")
         for i, prompt in enumerate(prompts):
-            print(f"  {players[i].name} prompt: {repr(prompt)[:50]}")
+            print(f"  {players[i].name} prompt: {repr(prompt)}")
 
         non_none_prompts = [p for p in prompts if p is not None]
         if len(set(non_none_prompts)) == len(non_none_prompts):
@@ -150,10 +150,11 @@ def test_full_game():
         result = RESULTS.get()
         print(f"Player received: {result.get('message')}")
         
-        # Dla pełnego testu można odkomentować aby zobaczyć pełną historię
-        # print("Full chain:")
-        # for entry in result.get('chain', []):
-        #     print(f"Round {entry['round_number']} ({entry['type']}): {entry['content'][:50]}")
+        #Dla pełnego testu można odkomentować aby zobaczyć pełną historię
+        
+        print("Full chain:")
+        for entry in result.get('chain', []):
+            print(f"Round {entry['round_number']} ({entry['type']}): {entry['content'][:50]}")
 
 if __name__ == "__main__":
     test_full_game()

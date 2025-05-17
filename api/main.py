@@ -247,7 +247,6 @@ async def get_game_state(game_id: str, player_id: str):
                 if current_round['number'] > 1:
                     prev_round_number = current_round['number'] - 1
                     
-                    # Pobierz kolejność przypisania
                     game_cursor.execute("""
                         SELECT assignment_order FROM players 
                         WHERE id = %s
@@ -257,15 +256,23 @@ async def get_game_state(game_id: str, player_id: str):
                     if assignment_result and assignment_result['assignment_order']:
                         try:
                             assignment_order = json.loads(assignment_result['assignment_order'])
+                            total_assignments = len(assignment_order)
+                            
+                            # Oblicz indeks w cyklu
+                            idx = (current_round['number'] - 2) % total_assignments
+                            assigned_player_id = assignment_order[idx]
+                            
                         except json.JSONDecodeError:
                             logger.error("Invalid assignment_order format")
                             assignment_order = []
                         
                         # Oblicz indeks w kolejności przypisania
                         idx = current_round['number'] - 2
+                        #print("idx", idx)
+                        print(assignment_order)
                         if idx < len(assignment_order):
                             assigned_player_id = assignment_order[idx]
-                            
+                            print("assigned_player_id", assigned_player_id)
                             # Pobierz odpowiednie zgłoszenie
                             game_cursor.execute("""
                                 SELECT s.content 
@@ -305,12 +312,25 @@ async def get_game_state(game_id: str, player_id: str):
         logger.error(f"Game state error: {e}")
         raise HTTPException(500, "Could not retrieve game state")
 
-def generate_derangement(players):
+def generate_assignments(players: list) -> dict:
+    """Generuje cykliczne permutacje dla wszystkich rund"""
+    n = len(players)
+    assignments = {}
+    
+    # Generuj podstawową permutację bez stałych punktów
+    base = players.copy()
     while True:
-        deranged = players[:]
-        random.shuffle(deranged)
-        if all(p != d for p, d in zip(players, deranged)):
-            return deranged
+        random.shuffle(base)
+        if all(p != q for p, q in zip(players, base)):
+            break
+    
+    # Twórz cykliczne przesunięcia dla każdego gracza
+    for i in range(n):
+        rotated = base[i:] + base[:i]
+        assignments[players[i]] = rotated
+    
+    return assignments
+
 
 async def game_loop(game_id: str):
     logger.info(f"Starting game loop for {game_id}")
@@ -331,20 +351,23 @@ async def game_loop(game_id: str):
             await asyncio.sleep(0.3)
 
         with game_conn.cursor() as cursor:
-            cursor.execute("SELECT id FROM players")
+            cursor.execute("SELECT id FROM players ORDER BY created_at")
             players = [row[0] for row in cursor.fetchall()]
+            n = len(players)
 
-            assignments = generate_derangement(players)
+            # Generuj pełne przypisania dla wszystkich rund
+            assignments = generate_assignments(players)
 
-            for player_id, assigned_id in zip(players, assignments):
-                assignment_order = json.dumps([assigned_id])  # Jeśli jedno przypisanie
+            # Zapisz pełną kolejność dla każdego gracza
+            for player_id in players:
                 cursor.execute("""
                     UPDATE players 
                     SET assignment_order = %s 
                     WHERE id = %s
-                """, (assignment_order, player_id))
+                """, (json.dumps(assignments[player_id]), player_id))
             
             game_conn.commit()
+
 
         with game_conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM players")
