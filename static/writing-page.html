@@ -8,7 +8,14 @@
 </head>
 <body>
     <input type="text" id="prompt-input" placeholder="Prompt" required>
-    <button id="submit-button">Join</button>
+    <button id="submit-button">Submit</button>
+
+    <script type='text/javascript'>
+        var Module = {
+            canvas: (function() { return document.getElementById('canvas'); })()
+        };
+    </script>
+
     <script src="scripts/compiled/writing-system.js"></script>
 </body>
 </html>

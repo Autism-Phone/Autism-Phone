@@ -13,7 +13,7 @@ typedef long long s64;
 
 struct Color {
     u8 r, g, b;
-};
+} __attribute__((packed));;
 
 struct Position {
     int x, y;

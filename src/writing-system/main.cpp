@@ -43,55 +43,56 @@ int main () {
 
     std::string stringResponse;
 
+    std::cout << stringResponse.max_size() << std::endl;
+
     api->get_drawing([&](std::string response) {
         stringResponse = response;
-    });
 
-    try {
-        json jsonResponse = json::parse(stringResponse);
-        std::cout << "Parsed JSON: " << jsonResponse.dump(4) << std::endl;
+        try {
+            json jsonResponse = json::parse(stringResponse);
 
-        std::string prompt = jsonResponse["prompt"].get<std::string>();
+            round_number = jsonResponse["round"]["number"].get<int>();
 
-        round_number = jsonResponse["round"]["number"].get<int>();
+            std::cout << "Round number: " << round_number << std::endl;
 
-        if (round_number > 1) {
-            pixelBuffer = (Color*)malloc(800 * 600 * sizeof(Color));
-            std::string encodedData = jsonResponse["prompt"].get<std::string>();
+            if (round_number > 1) {
+                pixelBuffer = (Color*)malloc(1000 * 600 * sizeof(Color));
+                std::string encodedData = jsonResponse["prompt"].get<std::string>();
 
-            std::string decodedData = base64_decode(encodedData);
-            std::cout << "Decoded data size: " << decodedData.size() << std::endl;
-            std::cout << "Decoded data: " << decodedData << std::endl;
+                std::string decodedData = base64_decode(encodedData);
 
-            for (int i = 0; i < decodedData.size(); i++) {
-                pixelBuffer = reinterpret_cast<Color*>(decodedData[i]);
+                size_t count = decodedData.size() / sizeof(Color);
+
+                std::memcpy(pixelBuffer, decodedData.data(), count * sizeof(Color));
+
+                std::cout << (int)pixelBuffer[0].r << ' ' << (int)pixelBuffer[0].g << ' ' << (int)pixelBuffer[0].b << std::endl;
+
+                SDL_version compiled;
+                SDL_version linked;
+
+                SDL_VERSION(&compiled);
+                SDL_GetVersion(&linked);
+
+                printf("Compiled against SDL %d.%d.%d\n", 
+                    compiled.major, compiled.minor, compiled.patch);
+                printf("Linked against SDL %d.%d.%d\n", 
+                    linked.major, linked.minor, linked.patch);
+
+                if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+                    throw("SDL failed to initialise");
+                }
+
+                canvas = new Canvas(1000, 600, Color{255, 255, 255}, "canvas");
+                canvas->draw(pixelBuffer);
+
+                free(pixelBuffer);
             }
 
-            SDL_version compiled;
-            SDL_version linked;
-
-            SDL_VERSION(&compiled);
-            SDL_GetVersion(&linked);
-
-            printf("Compiled against SDL %d.%d.%d\n", 
-                compiled.major, compiled.minor, compiled.patch);
-            printf("Linked against SDL %d.%d.%d\n", 
-                linked.major, linked.minor, linked.patch);
-
-            if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-                throw("SDL failed to initialise");
-	        }
-
-            canvas = new Canvas(1000, 600, Color{255, 255, 255}, "canvas");
-            canvas->draw(pixelBuffer);
-
-            free(pixelBuffer);
+        } catch (json::parse_error& e) {
+            std::cerr << "JSON parse error: " << e.what() << std::endl;
+            return 1;
         }
-
-    } catch (json::parse_error& e) {
-        std::cerr << "JSON parse error: " << e.what() << std::endl;
-        return 1;
-    }
+    });
 
     return 0;
 }
