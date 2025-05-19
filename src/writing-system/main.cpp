@@ -43,8 +43,6 @@ int main () {
 
     std::string stringResponse;
 
-    std::cout << stringResponse.max_size() << std::endl;
-
     api->get_drawing([&](std::string response) {
         stringResponse = response;
 
@@ -81,6 +79,8 @@ int main () {
                 if (SDL_Init(SDL_INIT_VIDEO) != 0) {
                     throw("SDL failed to initialise");
                 }
+
+                SDL_SetHint(SDL_HINT_GRAB_KEYBOARD, "0");
 
                 canvas = new Canvas(1000, 600, Color{255, 255, 255}, "canvas");
                 canvas->draw(pixelBuffer);

@@ -79,8 +79,11 @@ void init() {
     });
 
     submit_button = new Button("submit-button", []() {
-        Color* pixelBuffer = canvas->get_pixel_buffer();
-        api->submit(pixelBuffer);
+        if (!submit) {
+            Color* pixelBuffer = canvas->get_pixel_buffer();
+            api->submit(pixelBuffer);
+            submit = true;
+        }
     });
 
     prompt = new TextOutput("prompt-box");
