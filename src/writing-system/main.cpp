@@ -80,10 +80,14 @@ int main () {
                     throw("SDL failed to initialise");
                 }
 
-                SDL_SetHint(SDL_HINT_GRAB_KEYBOARD, "0");
-
                 canvas = new Canvas(1000, 600, Color{255, 255, 255}, "canvas");
                 canvas->draw(pixelBuffer);
+
+                SDL_SetHint(SDL_HINT_GRAB_KEYBOARD, "0");
+                SDL_SetHint(SDL_HINT_EMSCRIPTEN_KEYBOARD_ELEMENT, "#window");
+                SDL_EventState(SDL_TEXTINPUT, SDL_DISABLE);
+                SDL_EventState(SDL_KEYDOWN, SDL_DISABLE);
+                SDL_EventState(SDL_KEYUP, SDL_DISABLE);
 
                 free(pixelBuffer);
             }
