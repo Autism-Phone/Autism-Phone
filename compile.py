@@ -14,6 +14,15 @@ def compile(folder):
         if f.endswith(".cpp") and os.path.isfile(os.path.join(folder, f))
     ]
 
+    shared_folder = os.path.join(input_folder, "shared")
+    shared_cpp_files = [
+        os.path.join(shared_folder, f)
+        for f in os.listdir(shared_folder)
+        if f.endswith(".cpp") and os.path.isfile(os.path.join(shared_folder, f))
+    ]
+
+    cpp_files.extend(shared_cpp_files)
+
     if not cpp_files:
         print(f"No .cpp files found in {folder}. Skipping.")
         return
@@ -32,7 +41,10 @@ def compile(folder):
         "-s", "INITIAL_MEMORY=64MB",
         "-s", "ALLOW_MEMORY_GROWTH=1",
         "-s", "USE_WEBGL2=1",
+        "-s", "FETCH=1",
+        "-lwebsocket.js",
         "-lembind",
+        "-I", os.path.join(os.getcwd(), "src/shared")
     ]
 
     try:
@@ -41,8 +53,6 @@ def compile(folder):
     except subprocess.CalledProcessError as e:
         print(f"Error compiling {folder}:\n{e.stderr}")
 
-
-
 try:
     subprocess.run(["embuilder", "build", "sdl2"],
                     check=True, stderr=subprocess.PIPE, text=True, shell=(platform.system() == "Windows"))
@@ -50,10 +60,8 @@ try:
 except subprocess.CalledProcessError as e:
     print(f"Error building SDL2:\n{e.stderr}")
 
-
-
 input_folder = os.path.join(os.getcwd(), "src")
-output_folder = os.path.join(os.getcwd(), "scripts", "compiled")
+output_folder = os.path.join(os.getcwd(), "static", "scripts", "compiled")
 
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
@@ -65,4 +73,6 @@ folders = [
 ]
 
 for folder in folders:
+    if os.path.basename(folder) == "shared":
+        continue
     compile(folder)

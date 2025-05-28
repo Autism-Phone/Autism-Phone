@@ -13,7 +13,7 @@ typedef long long s64;
 
 struct Color {
     u8 r, g, b;
-};
+} __attribute__((packed));;
 
 struct Position {
     int x, y;
@@ -37,4 +37,23 @@ enum Allocation {
 enum ButtonState {
     DOWN,
     UP
+};
+
+enum GameState {
+    START,
+    PLAYING,
+    END
+};
+
+enum GameType {
+    DRAWING,
+    PROMPTING
+};
+
+enum StateTypes {
+    TIME,
+    STATUS,
+    ROUND_TYPE,
+    ROUND_NUMBER,
+    SUBMITTED
 };
