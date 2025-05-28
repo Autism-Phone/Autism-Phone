@@ -65,6 +65,7 @@ void Api::create_game() {
 
 void Api::join_game(const std::string &inviteCode, const std::string &playerName) {
     val::global("sessionStorage").call<void>("setItem", std::string("playerName"), playerName);
+    val::global("sessionStorage").call<void>("setItem", std::string("inviteCode"), inviteCode);
         
     emscripten_fetch_attr_t attr;
     emscripten_fetch_attr_init(&attr);
