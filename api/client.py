@@ -1,160 +1,180 @@
 import requests
-import random
-import time
-from threading import Thread
-from queue import Queue
+from time import sleep
+
 
 BASE_URL = "http://0.0.0.0:2137"
-RESULTS = Queue()
 
-class PlayerClient:
-    def __init__(self, name, game_id=None, invite_code=None):
-        self.name = name
-        self.game_id = game_id
-        self.invite_code = invite_code
-        self.player_id = None
-        self.submission_history = {}
-        self.prompts_received = {}
-        
-    def join_game(self):
-        response = requests.post(
-            f"{BASE_URL}/join-game",
-            json={"invite_code": self.invite_code, "name": self.name}
-        )
-        if response.status_code == 200:
-            data = response.json()
-            self.player_id = data['player_id']
-            self.game_id = data['game_id']
-            print(f"{self.name} joined game {self.game_id}")
-        else:
-            print(f"{self.name} join error: {response.text}")
+def create_game():
+    url = f"{BASE_URL}/create-game"
+    try:
+        response = requests.post(url)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error creating game: {e}")
+        return None
 
-    def play_round(self, round_info):
-        prompt = round_info.get('prompt')
-        round_num = round_info['round']['number']
-        round_type = round_info['round']['type']
-        
-        print(f"\n{self.name} starting round {round_num} ({round_type})")
-        print(f"Prompt: {prompt[:50] if prompt else 'First round - no prompt'}")
-        self.prompts_received[round_num] = prompt
-
-
-        # Generuj odpowiedź na podstawie typu rundy
-        if round_type == "text":
-            content = {"text": f"{self.name}'s answer to: {prompt}"}
-        else:
-            content = {"drawing": "amogus"}  # Uproszczony rysunek
-
-        # Wyślij odpowiedź
-        response = requests.post(
-            f"{BASE_URL}/submit",
-            json={"player_id": self.player_id, "content": content}
-        )
-        
-        if response.status_code == 200:
-            print(f"{self.name} submitted {round_type} successfully")
-            self.submission_history[round_num] = content
-        else:
-            print(f"{self.name} submission error: {response.text}")
-
-    def monitor_game(self):
-        last_round = -1
-        while True:
-            response = requests.get(
-                f"{BASE_URL}/game-state/{self.game_id}",
-                params={"player_id": self.player_id}
-            )
-            
-            if response.status_code != 200:
-                print(f"{self.name} game state error: {response.text}")
-                time.sleep(1)
-                continue
-
-            game_state = response.json()
-            
-            if game_state.get('status') == 'finished':
-                print(f"\n{self.name} received final state!")
-                RESULTS.put(game_state)
-                break
-                
-            if game_state.get('status') == 'in_progress':
-                current_round = game_state['round']['number']
-                if current_round != last_round:
-                    last_round = current_round
-                    self.play_round(game_state)
-            
-            time.sleep(0.5)
-
-def test_full_game():
-    # Tworzenie gry
-    host = PlayerClient("Host")
-    create_response = requests.post(f"{BASE_URL}/create-game")
-    game_data = create_response.json()
-    host.game_id = game_data['game_id']
-    host.invite_code = game_data['invite_code']
+def join_game(invite_code, player_name):
+    url = f"{BASE_URL}/join-game"
+    payload = {
+        "invite_code": invite_code,
+        "name": player_name
+    }
+    try:
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error joining game: {e}")
+        return None
     
-    print(f"Created game ID: {host.game_id}")
-    print(f"Invite code: {host.invite_code}")
 
-    # Dołączanie graczy
-    players = [
-        PlayerClient("Alice", invite_code=host.invite_code),
-        PlayerClient("Bob", invite_code=host.invite_code),
-        PlayerClient("Charlie", invite_code=host.invite_code),
-    ]
+def start_game(game_id: str):
+    url = f"{BASE_URL}/start-game/{game_id}"
+    try:
+        response = requests.post(url)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as he:
+        print(f"HTTP Error starting game: {he}\nResponse: {response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"Request Error starting game: {e}")
+    return None
+
+
+def get_game_state(game_id, player_id):
+    url = f"{BASE_URL}/game-state/{game_id}"
+    params = {"player_id": player_id}
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error downloading game save: {e}")
+        return None
     
-    for p in players:
-        p.join_game()
-        time.sleep(0.2)
 
-    # Start gry
-    print("\nStarting game...")
-    start_response = requests.post(f"{BASE_URL}/start-game/{host.game_id}")
-    print(f"Start response: {start_response.json()}")
+def submit(player_id: str, content: dict):
+    url = f"{BASE_URL}/submit"
+    payload = {
+        "player_id": player_id,
+        "content": content
+    }
+    
+    try:
+        response = requests.post(url, json=payload)
+        print("Full server response:", response.text)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as he:
+        print(f"HTTP Error Details: {he.response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"Connection Error: {e}")
+    return None
+    
 
-    # Uruchom wątki dla każdego gracza
-    threads = []
-    for p in players:
-        t = Thread(target=p.monitor_game)
-        t.start()
-        threads.append(t)
-
-    # Czekaj na zakończenie gry
-    for t in threads:
-        t.join()
-
-    # Porównanie promptów między graczami
-    print("\nComparing prompts for uniqueness...")
-
-    rounds_to_check = set()
-    for p in players:
-        rounds_to_check.update(p.prompts_received.keys())
-
-    for rnd in sorted(rounds_to_check):
-        prompts = [p.prompts_received.get(rnd, None) for p in players]
-        unique_prompts = set(prompts)
-        print(f"Round {rnd}:")
-        for i, prompt in enumerate(prompts):
-            print(f"  {players[i].name} prompt: {repr(prompt)}")
-
-        non_none_prompts = [p for p in prompts if p is not None]
-        if len(set(non_none_prompts)) == len(non_none_prompts):
-            print("  ✅ All prompts are unique or None.\n")
+"""def generate_drawing() -> list:
+    width = 2
+    height = 5
+    
+    row = []
+    for x in range(width):
+        if x % 2 == 0:
+            row.append([255, 255, 255])
         else:
-            print("  ❌ Duplicate prompts found!\n")
+            row.append([0, 0, 0])
+    
+    return row * height"""
 
-
-    # Pokaż wyniki
-    print("\nFinal results:")
-    while not RESULTS.empty():
-        result = RESULTS.get()
-        print(f"Player received: {result.get('message')}")
-        
-        #Dla pełnego testu można odkomentować aby zobaczyć pełną historię
-        
-        print("Full chain:")
-        for entry in result.get('chain', []):
-            print(f"Round {entry['round_number']} ({entry['type']}): {entry['content'][:50]}")
 
 if __name__ == "__main__":
-    test_full_game()
+    game_info = create_game()
+    if game_info:
+        print("Game created:", game_info)
+        print()
+        game_id = game_info.get("game_id")
+        invite_code = game_info.get("invite_code")
+        
+        player_info = join_game(invite_code, "Player1")
+        if player_info:
+            player_id = player_info.get("player_id")
+            print("Joined game:", player_info)
+            print()
+            
+            game_state = get_game_state(game_id, player_id)
+            if game_state:
+                print("Game state:", game_state)
+
+
+        player_info = join_game(invite_code, "Player2")
+        if player_info:
+            player_id = player_info.get("player_id")
+            print("Joined game:", player_info)
+            print()
+            
+            sleep(1)
+            game_state = get_game_state(game_id, player_id)
+            if game_state:
+                print("Game state:", game_state)
+            print()
+
+        player_info = join_game(invite_code, "Player3")
+        if player_info:
+            player_id = player_info.get("player_id")
+            print("Joined game:", player_info)
+            print()
+            
+            sleep(1)
+            game_state = get_game_state(game_id, player_id)
+            if game_state:
+                print("Game state:", game_state)
+            print()
+
+
+        start_response = start_game(game_id)
+        if start_response:
+            print("Game started:", start_response)
+        print()
+
+        help_var = 1
+
+        while True:
+            sleep(0.5)
+            game_state = get_game_state(game_id, player_id)
+            
+            if not game_state:
+                continue
+                
+            print("Game state:", game_state)
+            
+            try:
+                current_round = game_state.get("round", {})
+                time_left = float(current_round.get("time_left", 0.0))
+                round_type = current_round.get("type", "")
+
+                round_number = current_round.get("number", {})
+                print(round_number)
+                
+                if all([
+                    game_state.get("status") == "in_progress",
+                    help_var == round_number,
+                    time_left < 0.5,
+                    not game_state.get("player_has_submitted", False)
+                ]):
+                    content = {}
+                    
+                    if round_type == "text":
+                        content["text"] = "test"
+                    elif round_type == "drawing":
+                        content["drawing"] = "xede568g392148923743$#!@*$&@#!*(*$@#!(*&812#N$(@!&$*())))"
+                    else:
+                        print("Nieznany typ rundy")
+                        continue
+                        
+                    result = submit(player_id, content)
+                    if result and result.get("status") == "success":
+                        print("Submit succesful!")
+                        help_var += 1
+                    
+            except Exception as e:
+                print(f"Błąd: {e}")
