@@ -107,6 +107,14 @@ void Canvas::draw() {
     }
 }
 
+void Canvas::draw(Color *newImage) {
+    for (int i = 0; i < width * height; i++) {
+        pixelBuffer[i] = newImage[i];
+    }
+
+    render_frame();
+}
+
 void Canvas::check_update() {
     double current_time = SDL_GetTicks();
     double delta_time = current_time - last_time;
@@ -128,6 +136,10 @@ void Canvas::clear_canvas() {
     update_queue = std::queue<ScreenObject>();
 
     render_frame();
+}
+
+Color *Canvas::get_pixel_buffer() {
+    return pixelBuffer;
 }
 
 void Canvas::update_screen() {

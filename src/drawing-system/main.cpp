@@ -8,11 +8,17 @@
 #include "Inputs.h"
 #include "Button.h"
 #include "Switch.h"
+#include "Api.h"
+#include "TextOutput.h"
+
+#include "json.hpp"
 
 #include <emscripten.h>
 #include <emscripten/stack.h>
 
 #include <SDL2/SDL.h>
+
+using json = nlohmann::json;
 
 const int CANVAS_WIDTH = 1000;
 const int CANVAS_HEIGHT = 600;
@@ -31,12 +37,17 @@ Input<Color>* color_input = nullptr;
 Input<s32>* size_input = nullptr;
 Input<Shape>* shape_input = nullptr;
 Button *clear_button = nullptr;
+Button* submit_button = nullptr;
+Api* api = nullptr;
+TextOutput* prompt = nullptr;
 
 std::vector<Switch*> switchList;
 
 ButtonState l_mouse = UP;
 ButtonState r_mouse = UP;
 ButtonState m_mouse = UP;
+
+bool submit = false;
 
 void init() {
     SDL_version compiled;
@@ -54,6 +65,9 @@ void init() {
 		throw("SDL failed to initialise");
 	}
 
+    api = new Api();
+    api->round_init();
+
     canvas = new Canvas(CANVAS_WIDTH, CANVAS_HEIGHT, background_color, "Drawing System");
     canvas->brush = Brush(brush_color, brush_size, brush_shape);
 
@@ -62,6 +76,21 @@ void init() {
     shape_input = new Input<Shape>("shape-picker");
     clear_button = new Button("clear-button", []() {
         canvas->clear_canvas();
+    });
+
+    submit_button = new Button("submit-button", []() {
+        if (!submit) {
+            Color* pixelBuffer = canvas->get_pixel_buffer();
+            api->submit(pixelBuffer);
+            submit = true;
+        }
+    });
+
+    prompt = new TextOutput("prompt-box");
+
+
+    api->get_prompt([&](std::string text) {
+        prompt->change_text(text);
     });
 
     switchList.push_back(new Switch("pencil", switchList));
@@ -144,7 +173,7 @@ void main_loop() {
     tool_input();
 
     while (SDL_PollEvent(canvas->event)) {
-        input(canvas->event);
+        if (!submit) input(canvas->event);
     }
 
     if(!canvas->erasing) {
@@ -159,9 +188,9 @@ void main_loop() {
     canvas->brush.shape = brush_shape;
 
     canvas->get_mouse_pos();
-    canvas->draw();
+    if(!submit) canvas->draw();
 
-    canvas->check_update();
+    if(!submit) canvas->check_update();
 }
 
 int main() {
