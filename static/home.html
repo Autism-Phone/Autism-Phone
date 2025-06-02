@@ -4,13 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drawing Page</title>
-    <link rel="stylesheet" href="styles/drawing-page-style.css">
+    <link rel="stylesheet" href="styles/style-home.css">
 </head>
 <body>
-    <input type="text" id="name-input" placeholder="Enter Username" />
-    <button id="create-button">Create Game</button>
-    <input type="text" id="code-input" placeholder="Enter Invite Code" />
-    <button id="join-button">Join Game</button>
+    <!--<div class="box">
+        Create Lobby
+    </div>
+    <div class="box" style="float: right; margin-right: 12%;">
+        Join <br>Lobby
+    </div><br>-->
+    <button class="box" id="join-button" style="margin-left: 13.5vw;">Join Lobby</button>
+    <button class="box" id="create-button" style="float: right; margin-right: 13.5vw;">Create Game</button>
+    
+    <div id="inputs">
+    <input type="text" id="code-input" class="inp" placeholder="Enter Invite Code" style="margin-left: 15vw;"/>
+    <input type="text" id="name-input" class="inp" placeholder="Enter Username" style="float: right; margin-right: 15vw;"/>
+    </div>
     <script src="scripts/compiled/home-page.js"></script>
 </body>
 </html>

@@ -1,0 +1,47 @@
+body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    /*justify-content: center; /* center horizontally */
+    background-image: url('images/merged.gif');
+    background-size: 50% 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* center horizontally */
+
+}
+
+#start-button {
+    margin-top: 180px;
+    width: 40vw;
+    height: 18vw; 
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 15vw;
+    cursor: pointer;
+    transition: background-color 0.2s ease; /* smooth 0.5s transition */
+  }
+
+  #start-button:hover {
+    background-color: #2980b9; /* darker blue */
+  }
+  
+  #start-button:active {    
+    background-color: #1c5980; /* even darker on click/touch */
+  }
+
+  .game-code {
+    width: 18vw;
+    height: 2vw;
+    background-color: #ffffff;
+    color: black;
+    border: 2px solid black;
+    margin-top: 20px;
+    font-size: 1.5rem;
+    font-family: Arial, sans-serif;
+    text-align: left;
+    display: flex;
+    justify-content: center;
+  }
