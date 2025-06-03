@@ -313,21 +313,21 @@ async def get_game_state(game_id: str, player_id: str):
         raise HTTPException(500, "Could not retrieve game state")
 
 def generate_assignments(players: list) -> dict:
-    """Generuje cykliczne permutacje dla wszystkich rund"""
+    """Generates cyclic permutations for n-1 rounds to avoid self-reception."""
     n = len(players)
     assignments = {}
     
-    # Generuj podstawową permutację bez stałych punktów
     base = players.copy()
     while True:
         random.shuffle(base)
         if all(p != q for p, q in zip(players, base)):
             break
     
-    # Twórz cykliczne przesunięcia dla każdego gracza
     for i in range(n):
         rotated = base[i:] + base[:i]
-        assignments[players[i]] = rotated
+        assignments[players[i]] = rotated[:n-1]
+
+    print(assignments)
     
     return assignments
 
