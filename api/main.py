@@ -29,7 +29,9 @@ DB_CONFIG = {
     "host": "localhost",
     "user": "autism",
     "password": "h4s10",
-    "database": "game_sessions"
+    "database": "game_sessions",
+    "port": 3306
+
 }
 class GameCreate(BaseModel):
     max_players: int = 10
@@ -144,6 +146,15 @@ async def start_game(game_id: str):
             raise HTTPException(
                 status_code=400,
                 detail=f"Cannot start game in {current_status} status"
+            )
+
+        cursor.execute("SELECT * FROM game_players WHERE game_id = %s", (game_id,))
+        players = cursor.fetchall()
+
+        if len(players) < 2:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot start game with less than 2 players"
             )
         
         # 2. Aktualizacja statusu z potwierdzeniem
