@@ -2,8 +2,7 @@ body {
     margin: 0;
     height: 100vh;
     display: flex;
-    /*justify-content: center; /* center horizontally */
-    background-image: url('images/merged.gif');
+    background-color: #2B2A33;
     background-size: 50% 50%;
     display: flex;
     flex-direction: column;
@@ -13,6 +12,8 @@ body {
 
 #start-button {
     margin-top: 180px;
+    min-width: 100px;
+    min-height: 50px;
     width: 40vw;
     height: 18vw; 
     background-color: #3498db;
@@ -25,23 +26,68 @@ body {
   }
 
   #start-button:hover {
-    background-color: #2980b9; /* darker blue */
+    background-color: #ff0000; /* darker blue */
   }
   
   #start-button:active {    
-    background-color: #1c5980; /* even darker on click/touch */
+    background-color: #139e26; /* even darker on click/touch */
   }
 
-  .game-code {
+.game-code {
     width: 18vw;
     height: 2vw;
+    min-height: 30px;
     background-color: #ffffff;
     color: black;
     border: 2px solid black;
     margin-top: 20px;
     font-size: 1.5rem;
     font-family: Arial, sans-serif;
-    text-align: left;
+
     display: flex;
+    align-items: center; 
     justify-content: center;
+    text-align: center;
+
+    align-self: center;
+    padding: 10px;
+}
+
+#title {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 80px;
+    background-color: #1e1d25;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Arial, sans-serif;
+    font-size: 2rem;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space:nowrap;
+    overflow:unset;
+}
+
+/* Żeby treść nie chowała się za paskiem */
+#mid {
+  margin-left: 3%;
+  margin-right: 3%;
+  margin-top: 100px; /* wysokość nagłówka + zapas */
+  background-color: rgb(54, 55, 65);
+  flex-grow: 1;
+
+}
+
+.gay {
+    background: linear-gradient(90deg, 
+      red, orange, yellow, green, blue, indigo, violet);
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-family: fantasy;
   }
